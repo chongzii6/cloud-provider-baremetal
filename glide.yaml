@@ -1,0 +1,31 @@
+package: github.com/chongzii6/cloud-provider-baremetal
+import:
+- package: github.com/golang/glog
+- package: github.com/spf13/pflag
+  version: ^1.0.2
+- package: k8s.io/api
+  subpackages:
+  - core/v1
+- package: k8s.io/apimachinery
+  version: release-1.11
+  subpackages:
+  - pkg/apis/meta/v1
+- package: k8s.io/apiserver
+  subpackages:
+  - pkg/server/healthz
+  - pkg/util/flag
+  - pkg/util/logs
+- package: k8s.io/client-go
+  version: 8.0.0
+  subpackages:
+  - kubernetes
+  - rest
+- package: k8s.io/kubernetes
+  version: 1.11.2
+  subpackages:
+  - cmd/cloud-controller-manager/app
+  - cmd/cloud-controller-manager/app/options
+  - pkg/client/metrics/prometheus
+  - pkg/cloudprovider
+  - pkg/cloudprovider/providers
+  - pkg/version/prometheus
