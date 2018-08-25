@@ -18,7 +18,6 @@ package testing
 
 import (
 	"net/url"
-	"sync"
 
 	registrationv1beta1 "k8s.io/api/admissionregistration/v1beta1"
 	corev1 "k8s.io/api/core/v1"
@@ -42,11 +41,6 @@ var matchEverythingRules = []registrationv1beta1.RuleWithOperations{{
 		Resources:   []string{"*/*"},
 	},
 }}
-
-var sideEffectsUnknown registrationv1beta1.SideEffectClass = registrationv1beta1.SideEffectClassUnknown
-var sideEffectsNone registrationv1beta1.SideEffectClass = registrationv1beta1.SideEffectClassNone
-var sideEffectsSome registrationv1beta1.SideEffectClass = registrationv1beta1.SideEffectClassSome
-var sideEffectsNoneOnDryRun registrationv1beta1.SideEffectClass = registrationv1beta1.SideEffectClassNoneOnDryRun
 
 // NewFakeDataSource returns a mock client and informer returning the given webhooks.
 func NewFakeDataSource(name string, webhooks []registrationv1beta1.Webhook, mutating bool, stopCh <-chan struct{}) (clientset kubernetes.Interface, factory informers.SharedInformerFactory) {
@@ -82,7 +76,7 @@ func NewFakeDataSource(name string, webhooks []registrationv1beta1.Webhook, muta
 	return client, informerFactory
 }
 
-func newAttributesRecord(object metav1.Object, oldObject metav1.Object, kind schema.GroupVersionKind, namespace string, name string, resource string, labels map[string]string, dryRun bool) admission.Attributes {
+func newAttributesRecord(object metav1.Object, oldObject metav1.Object, kind schema.GroupVersionKind, namespace string, name string, resource string, labels map[string]string) admission.Attributes {
 	object.SetName(name)
 	object.SetNamespace(namespace)
 	objectLabels := map[string]string{resource + ".name": name}
@@ -101,41 +95,11 @@ func newAttributesRecord(object metav1.Object, oldObject metav1.Object, kind sch
 		UID:  "webhook-test",
 	}
 
-	return &FakeAttributes{
-		Attributes: admission.NewAttributesRecord(object.(runtime.Object), oldObject.(runtime.Object), kind, namespace, name, gvr, subResource, admission.Update, dryRun, &userInfo),
-	}
-}
-
-// FakeAttributes decorate admission.Attributes. It's used to trace the added annotations.
-type FakeAttributes struct {
-	admission.Attributes
-	annotations map[string]string
-	mutex       sync.Mutex
-}
-
-// AddAnnotation adds an annotation key value pair to FakeAttributes
-func (f *FakeAttributes) AddAnnotation(k, v string) error {
-	f.mutex.Lock()
-	defer f.mutex.Unlock()
-	if err := f.Attributes.AddAnnotation(k, v); err != nil {
-		return err
-	}
-	if f.annotations == nil {
-		f.annotations = make(map[string]string)
-	}
-	f.annotations[k] = v
-	return nil
-}
-
-// GetAnnotations reads annotations from FakeAttributes
-func (f *FakeAttributes) GetAnnotations() map[string]string {
-	f.mutex.Lock()
-	defer f.mutex.Unlock()
-	return f.annotations
+	return admission.NewAttributesRecord(object.(runtime.Object), oldObject.(runtime.Object), kind, namespace, name, gvr, subResource, admission.Update, &userInfo)
 }
 
 // NewAttribute returns static admission Attributes for testing.
-func NewAttribute(namespace string, labels map[string]string, dryRun bool) admission.Attributes {
+func NewAttribute(namespace string, labels map[string]string) admission.Attributes {
 	// Set up a test object for the call
 	object := corev1.Pod{
 		TypeMeta: metav1.TypeMeta{
@@ -147,11 +111,11 @@ func NewAttribute(namespace string, labels map[string]string, dryRun bool) admis
 	kind := corev1.SchemeGroupVersion.WithKind("Pod")
 	name := "my-pod"
 
-	return newAttributesRecord(&object, &oldObject, kind, namespace, name, "pod", labels, dryRun)
+	return newAttributesRecord(&object, &oldObject, kind, namespace, name, "pod", labels)
 }
 
 // NewAttributeUnstructured returns static admission Attributes for testing with custom resources.
-func NewAttributeUnstructured(namespace string, labels map[string]string, dryRun bool) admission.Attributes {
+func NewAttributeUnstructured(namespace string, labels map[string]string) admission.Attributes {
 	// Set up a test object for the call
 	object := unstructured.Unstructured{}
 	object.SetKind("TestCRD")
@@ -162,7 +126,7 @@ func NewAttributeUnstructured(namespace string, labels map[string]string, dryRun
 	kind := object.GroupVersionKind()
 	name := "my-test-crd"
 
-	return newAttributesRecord(&object, &oldObject, kind, namespace, name, "crd", labels, dryRun)
+	return newAttributesRecord(&object, &oldObject, kind, namespace, name, "crd", labels)
 }
 
 type urlConfigGenerator struct {
@@ -181,23 +145,18 @@ func (c urlConfigGenerator) ccfgURL(urlPath string) registrationv1beta1.WebhookC
 
 // Test is a webhook test case.
 type Test struct {
-	Name              string
-	Webhooks          []registrationv1beta1.Webhook
-	Path              string
-	IsCRD             bool
-	IsDryRun          bool
-	AdditionalLabels  map[string]string
-	ExpectLabels      map[string]string
-	ExpectAllow       bool
-	ErrorContains     string
-	ExpectAnnotations map[string]string
+	Name             string
+	Webhooks         []registrationv1beta1.Webhook
+	Path             string
+	IsCRD            bool
+	AdditionalLabels map[string]string
+	ExpectLabels     map[string]string
+	ExpectAllow      bool
+	ErrorContains    string
 }
 
-// NewNonMutatingTestCases returns test cases with a given base url.
-// All test cases in NewNonMutatingTestCases have no Patch set in
-// AdmissionResponse. The test cases are used by both MutatingAdmissionWebhook
-// and ValidatingAdmissionWebhook.
-func NewNonMutatingTestCases(url *url.URL) []Test {
+// NewTestCases returns test cases with a given base url.
+func NewTestCases(url *url.URL) []Test {
 	policyFail := registrationv1beta1.Fail
 	policyIgnore := registrationv1beta1.Ignore
 	ccfgURL := urlConfigGenerator{url}.ccfgURL
@@ -218,13 +177,70 @@ func NewNonMutatingTestCases(url *url.URL) []Test {
 		{
 			Name: "match & allow",
 			Webhooks: []registrationv1beta1.Webhook{{
-				Name:              "allow.example.com",
+				Name:              "allow",
 				ClientConfig:      ccfgSVC("allow"),
 				Rules:             matchEverythingRules,
 				NamespaceSelector: &metav1.LabelSelector{},
 			}},
-			ExpectAllow:       true,
-			ExpectAnnotations: map[string]string{"allow.example.com/key1": "value1"},
+			ExpectAllow: true,
+		},
+		{
+			Name: "match & remove label",
+			Webhooks: []registrationv1beta1.Webhook{{
+				Name:              "removeLabel",
+				ClientConfig:      ccfgSVC("removeLabel"),
+				Rules:             matchEverythingRules,
+				NamespaceSelector: &metav1.LabelSelector{},
+			}},
+			ExpectAllow:      true,
+			AdditionalLabels: map[string]string{"remove": "me"},
+			ExpectLabels:     map[string]string{"pod.name": "my-pod"},
+		},
+		{
+			Name: "match & add label",
+			Webhooks: []registrationv1beta1.Webhook{{
+				Name:              "addLabel",
+				ClientConfig:      ccfgSVC("addLabel"),
+				Rules:             matchEverythingRules,
+				NamespaceSelector: &metav1.LabelSelector{},
+			}},
+			ExpectAllow:  true,
+			ExpectLabels: map[string]string{"pod.name": "my-pod", "added": "test"},
+		},
+		{
+			Name: "match CRD & add label",
+			Webhooks: []registrationv1beta1.Webhook{{
+				Name:              "addLabel",
+				ClientConfig:      ccfgSVC("addLabel"),
+				Rules:             matchEverythingRules,
+				NamespaceSelector: &metav1.LabelSelector{},
+			}},
+			IsCRD:        true,
+			ExpectAllow:  true,
+			ExpectLabels: map[string]string{"crd.name": "my-test-crd", "added": "test"},
+		},
+		{
+			Name: "match CRD & remove label",
+			Webhooks: []registrationv1beta1.Webhook{{
+				Name:              "removeLabel",
+				ClientConfig:      ccfgSVC("removeLabel"),
+				Rules:             matchEverythingRules,
+				NamespaceSelector: &metav1.LabelSelector{},
+			}},
+			IsCRD:            true,
+			ExpectAllow:      true,
+			AdditionalLabels: map[string]string{"remove": "me"},
+			ExpectLabels:     map[string]string{"crd.name": "my-test-crd"},
+		},
+		{
+			Name: "match & invalid mutation",
+			Webhooks: []registrationv1beta1.Webhook{{
+				Name:              "invalidMutation",
+				ClientConfig:      ccfgSVC("invalidMutation"),
+				Rules:             matchEverythingRules,
+				NamespaceSelector: &metav1.LabelSelector{},
+			}},
+			ErrorContains: "invalid character",
 		},
 		{
 			Name: "match & disallow",
@@ -350,13 +366,12 @@ func NewNonMutatingTestCases(url *url.URL) []Test {
 		{
 			Name: "match & allow (url)",
 			Webhooks: []registrationv1beta1.Webhook{{
-				Name:              "allow.example.com",
+				Name:              "allow",
 				ClientConfig:      ccfgURL("allow"),
 				Rules:             matchEverythingRules,
 				NamespaceSelector: &metav1.LabelSelector{},
 			}},
-			ExpectAllow:       true,
-			ExpectAnnotations: map[string]string{"allow.example.com/key1": "value1"},
+			ExpectAllow: true,
 		},
 		{
 			Name: "match & disallow (url)",
@@ -388,162 +403,6 @@ func NewNonMutatingTestCases(url *url.URL) []Test {
 				NamespaceSelector: &metav1.LabelSelector{},
 			}},
 			ErrorContains: "Webhook response was absent",
-		},
-		{
-			Name: "no match dry run",
-			Webhooks: []registrationv1beta1.Webhook{{
-				Name:         "nomatch",
-				ClientConfig: ccfgSVC("allow"),
-				Rules: []registrationv1beta1.RuleWithOperations{{
-					Operations: []registrationv1beta1.OperationType{registrationv1beta1.Create},
-				}},
-				NamespaceSelector: &metav1.LabelSelector{},
-				SideEffects:       &sideEffectsSome,
-			}},
-			IsDryRun:    true,
-			ExpectAllow: true,
-		},
-		{
-			Name: "match dry run side effects Unknown",
-			Webhooks: []registrationv1beta1.Webhook{{
-				Name:              "allow",
-				ClientConfig:      ccfgSVC("allow"),
-				Rules:             matchEverythingRules,
-				NamespaceSelector: &metav1.LabelSelector{},
-				SideEffects:       &sideEffectsUnknown,
-			}},
-			IsDryRun:      true,
-			ErrorContains: "does not support dry run",
-		},
-		{
-			Name: "match dry run side effects None",
-			Webhooks: []registrationv1beta1.Webhook{{
-				Name:              "allow",
-				ClientConfig:      ccfgSVC("allow"),
-				Rules:             matchEverythingRules,
-				NamespaceSelector: &metav1.LabelSelector{},
-				SideEffects:       &sideEffectsNone,
-			}},
-			IsDryRun:          true,
-			ExpectAllow:       true,
-			ExpectAnnotations: map[string]string{"allow/key1": "value1"},
-		},
-		{
-			Name: "match dry run side effects Some",
-			Webhooks: []registrationv1beta1.Webhook{{
-				Name:              "allow",
-				ClientConfig:      ccfgSVC("allow"),
-				Rules:             matchEverythingRules,
-				NamespaceSelector: &metav1.LabelSelector{},
-				SideEffects:       &sideEffectsSome,
-			}},
-			IsDryRun:      true,
-			ErrorContains: "does not support dry run",
-		},
-		{
-			Name: "match dry run side effects NoneOnDryRun",
-			Webhooks: []registrationv1beta1.Webhook{{
-				Name:              "allow",
-				ClientConfig:      ccfgSVC("allow"),
-				Rules:             matchEverythingRules,
-				NamespaceSelector: &metav1.LabelSelector{},
-				SideEffects:       &sideEffectsNoneOnDryRun,
-			}},
-			IsDryRun:          true,
-			ExpectAllow:       true,
-			ExpectAnnotations: map[string]string{"allow/key1": "value1"},
-		},
-		{
-			Name: "illegal annotation format",
-			Webhooks: []registrationv1beta1.Webhook{{
-				Name:              "invalidAnnotation",
-				ClientConfig:      ccfgURL("invalidAnnotation"),
-				Rules:             matchEverythingRules,
-				NamespaceSelector: &metav1.LabelSelector{},
-			}},
-			ExpectAllow: true,
-		},
-		// No need to test everything with the url case, since only the
-		// connection is different.
-	}
-}
-
-// NewMutatingTestCases returns test cases with a given base url.
-// All test cases in NewMutatingTestCases have Patch set in
-// AdmissionResponse. The test cases are only used by both MutatingAdmissionWebhook.
-func NewMutatingTestCases(url *url.URL) []Test {
-	return []Test{
-		{
-			Name: "match & remove label",
-			Webhooks: []registrationv1beta1.Webhook{{
-				Name:              "removelabel.example.com",
-				ClientConfig:      ccfgSVC("removeLabel"),
-				Rules:             matchEverythingRules,
-				NamespaceSelector: &metav1.LabelSelector{},
-			}},
-			ExpectAllow:       true,
-			AdditionalLabels:  map[string]string{"remove": "me"},
-			ExpectLabels:      map[string]string{"pod.name": "my-pod"},
-			ExpectAnnotations: map[string]string{"removelabel.example.com/key1": "value1"},
-		},
-		{
-			Name: "match & add label",
-			Webhooks: []registrationv1beta1.Webhook{{
-				Name:              "addLabel",
-				ClientConfig:      ccfgSVC("addLabel"),
-				Rules:             matchEverythingRules,
-				NamespaceSelector: &metav1.LabelSelector{},
-			}},
-			ExpectAllow:  true,
-			ExpectLabels: map[string]string{"pod.name": "my-pod", "added": "test"},
-		},
-		{
-			Name: "match CRD & add label",
-			Webhooks: []registrationv1beta1.Webhook{{
-				Name:              "addLabel",
-				ClientConfig:      ccfgSVC("addLabel"),
-				Rules:             matchEverythingRules,
-				NamespaceSelector: &metav1.LabelSelector{},
-			}},
-			IsCRD:        true,
-			ExpectAllow:  true,
-			ExpectLabels: map[string]string{"crd.name": "my-test-crd", "added": "test"},
-		},
-		{
-			Name: "match CRD & remove label",
-			Webhooks: []registrationv1beta1.Webhook{{
-				Name:              "removelabel.example.com",
-				ClientConfig:      ccfgSVC("removeLabel"),
-				Rules:             matchEverythingRules,
-				NamespaceSelector: &metav1.LabelSelector{},
-			}},
-			IsCRD:             true,
-			ExpectAllow:       true,
-			AdditionalLabels:  map[string]string{"remove": "me"},
-			ExpectLabels:      map[string]string{"crd.name": "my-test-crd"},
-			ExpectAnnotations: map[string]string{"removelabel.example.com/key1": "value1"},
-		},
-		{
-			Name: "match & invalid mutation",
-			Webhooks: []registrationv1beta1.Webhook{{
-				Name:              "invalidMutation",
-				ClientConfig:      ccfgSVC("invalidMutation"),
-				Rules:             matchEverythingRules,
-				NamespaceSelector: &metav1.LabelSelector{},
-			}},
-			ErrorContains: "invalid character",
-		},
-		{
-			Name: "match & remove label dry run unsupported",
-			Webhooks: []registrationv1beta1.Webhook{{
-				Name:              "removeLabel",
-				ClientConfig:      ccfgSVC("removeLabel"),
-				Rules:             matchEverythingRules,
-				NamespaceSelector: &metav1.LabelSelector{},
-				SideEffects:       &sideEffectsUnknown,
-			}},
-			IsDryRun:      true,
-			ErrorContains: "does not support dry run",
 		},
 		// No need to test everything with the url case, since only the
 		// connection is different.

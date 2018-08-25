@@ -17,7 +17,6 @@ limitations under the License.
 package rest
 
 import (
-	"context"
 	"io"
 	"net/http"
 	"net/url"
@@ -50,7 +49,7 @@ func (obj *LocationStreamer) DeepCopyObject() runtime.Object {
 
 // InputStream returns a stream with the contents of the URL location. If no location is provided,
 // a null stream is returned.
-func (s *LocationStreamer) InputStream(ctx context.Context, apiVersion, acceptHeader string) (stream io.ReadCloser, flush bool, contentType string, err error) {
+func (s *LocationStreamer) InputStream(apiVersion, acceptHeader string) (stream io.ReadCloser, flush bool, contentType string, err error) {
 	if s.Location == nil {
 		// If no location was provided, return a null stream
 		return nil, false, "", nil
@@ -60,12 +59,7 @@ func (s *LocationStreamer) InputStream(ctx context.Context, apiVersion, acceptHe
 		transport = http.DefaultTransport
 	}
 	client := &http.Client{Transport: transport}
-	req, err := http.NewRequest("GET", s.Location.String(), nil)
-	// Pass the parent context down to the request to ensure that the resources
-	// will be release properly.
-	req = req.WithContext(ctx)
-
-	resp, err := client.Do(req)
+	resp, err := client.Get(s.Location.String())
 	if err != nil {
 		return nil, false, "", err
 	}

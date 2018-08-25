@@ -20,8 +20,6 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/stretchr/testify/require"
-
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -31,16 +29,16 @@ import (
 	example2v1 "k8s.io/apiserver/pkg/apis/example2/v1"
 )
 
-func initiateScheme(t *testing.T) *runtime.Scheme {
+func initiateScheme() *runtime.Scheme {
 	s := runtime.NewScheme()
-	require.NoError(t, example.AddToScheme(s))
-	require.NoError(t, examplev1.AddToScheme(s))
-	require.NoError(t, example2v1.AddToScheme(s))
+	example.AddToScheme(s)
+	examplev1.AddToScheme(s)
+	example2v1.AddToScheme(s)
 	return s
 }
 
 func TestConvertToGVK(t *testing.T) {
-	scheme := initiateScheme(t)
+	scheme := initiateScheme()
 	c := convertor{Scheme: scheme}
 	table := map[string]struct {
 		obj         runtime.Object
@@ -136,7 +134,7 @@ func TestConvertToGVK(t *testing.T) {
 // TestRuntimeSchemeConvert verifies that scheme.Convert(x, x, nil) for an unstructured x is a no-op.
 // This did not use to be like that and we had to wrap scheme.Convert before.
 func TestRuntimeSchemeConvert(t *testing.T) {
-	scheme := initiateScheme(t)
+	scheme := initiateScheme()
 	obj := &unstructured.Unstructured{
 		Object: map[string]interface{}{
 			"foo": "bar",

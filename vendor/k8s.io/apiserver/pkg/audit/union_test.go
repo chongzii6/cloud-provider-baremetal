@@ -40,10 +40,6 @@ func (f *fakeBackend) Shutdown() {
 	// Nothing to do here.
 }
 
-func (f *fakeBackend) String() string {
-	return ""
-}
-
 func TestUnion(t *testing.T) {
 	backends := []Backend{
 		new(fakeBackend),

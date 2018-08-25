@@ -1339,7 +1339,6 @@ type ScaleIOVolumeSource struct {
 	// +optional
 	StoragePool string `json:"storagePool,omitempty" protobuf:"bytes,6,opt,name=storagePool"`
 	// Indicates whether the storage for a volume should be ThickProvisioned or ThinProvisioned.
-	// Default is ThinProvisioned.
 	// +optional
 	StorageMode string `json:"storageMode,omitempty" protobuf:"bytes,7,opt,name=storageMode"`
 	// The name of a volume already created in the ScaleIO system
@@ -1347,8 +1346,7 @@ type ScaleIOVolumeSource struct {
 	VolumeName string `json:"volumeName,omitempty" protobuf:"bytes,8,opt,name=volumeName"`
 	// Filesystem type to mount.
 	// Must be a filesystem type supported by the host operating system.
-	// Ex. "ext4", "xfs", "ntfs".
-	// Default is "xfs".
+	// Ex. "ext4", "xfs", "ntfs". Implicitly inferred to be "ext4" if unspecified.
 	// +optional
 	FSType string `json:"fsType,omitempty" protobuf:"bytes,9,opt,name=fsType"`
 	// Defaults to false (read/write). ReadOnly here will force
@@ -1376,7 +1374,6 @@ type ScaleIOPersistentVolumeSource struct {
 	// +optional
 	StoragePool string `json:"storagePool,omitempty" protobuf:"bytes,6,opt,name=storagePool"`
 	// Indicates whether the storage for a volume should be ThickProvisioned or ThinProvisioned.
-	// Default is ThinProvisioned.
 	// +optional
 	StorageMode string `json:"storageMode,omitempty" protobuf:"bytes,7,opt,name=storageMode"`
 	// The name of a volume already created in the ScaleIO system
@@ -1384,8 +1381,7 @@ type ScaleIOPersistentVolumeSource struct {
 	VolumeName string `json:"volumeName,omitempty" protobuf:"bytes,8,opt,name=volumeName"`
 	// Filesystem type to mount.
 	// Must be a filesystem type supported by the host operating system.
-	// Ex. "ext4", "xfs", "ntfs".
-	// Default is "xfs"
+	// Ex. "ext4", "xfs", "ntfs". Implicitly inferred to be "ext4" if unspecified.
 	// +optional
 	FSType string `json:"fsType,omitempty" protobuf:"bytes,9,opt,name=fsType"`
 	// Defaults to false (read/write). ReadOnly here will force
@@ -2059,7 +2055,7 @@ type Container struct {
 	Env []EnvVar `json:"env,omitempty" patchStrategy:"merge" patchMergeKey:"name" protobuf:"bytes,7,rep,name=env"`
 	// Compute Resources required by this container.
 	// Cannot be updated.
-	// More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/
+	// More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources
 	// +optional
 	Resources ResourceRequirements `json:"resources,omitempty" protobuf:"bytes,8,opt,name=resources"`
 	// Pod volumes to mount into the container's filesystem.
@@ -2798,7 +2794,7 @@ type PodSpec struct {
 	// in the same pod, and the first process in each container will not be assigned PID 1.
 	// HostPID and ShareProcessNamespace cannot both be set.
 	// Optional: Default to false.
-	// This field is beta-level and may be disabled with the PodShareProcessNamespace feature.
+	// This field is alpha-level and is honored only by servers that enable the PodShareProcessNamespace feature.
 	// +k8s:conversion-gen=false
 	// +optional
 	ShareProcessNamespace *bool `json:"shareProcessNamespace,omitempty" protobuf:"varint,27,opt,name=shareProcessNamespace"`
@@ -2865,14 +2861,6 @@ type PodSpec struct {
 	// More info: https://github.com/kubernetes/community/blob/master/keps/sig-network/0007-pod-ready%2B%2B.md
 	// +optional
 	ReadinessGates []PodReadinessGate `json:"readinessGates,omitempty" protobuf:"bytes,28,opt,name=readinessGates"`
-	// RuntimeClassName refers to a RuntimeClass object in the node.k8s.io group, which should be used
-	// to run this pod.  If no RuntimeClass resource matches the named class, the pod will not be run.
-	// If unset or empty, the "legacy" RuntimeClass will be used, which is an implicit class with an
-	// empty definition that uses the default runtime handler.
-	// More info: https://github.com/kubernetes/community/blob/master/keps/sig-node/0014-runtime-class.md
-	// This is an alpha feature and may change in the future.
-	// +optional
-	RuntimeClassName *string `json:"runtimeClassName,omitempty" protobuf:"bytes,29,opt,name=runtimeClassName"`
 }
 
 // HostAlias holds the mapping between IP and hostnames that will be injected as an entry in the

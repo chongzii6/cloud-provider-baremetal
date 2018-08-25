@@ -17,12 +17,9 @@ limitations under the License.
 package buffered
 
 import (
-	"fmt"
-	"sync"
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -31,7 +28,17 @@ import (
 )
 
 var (
-	infiniteTimeCh <-chan time.Time
+	closedStopCh = func() <-chan struct{} {
+		ch := make(chan struct{})
+		close(ch)
+		return ch
+	}()
+	infiniteTimeCh <-chan time.Time = make(chan time.Time)
+	closedTimeCh                    = func() <-chan time.Time {
+		ch := make(chan time.Time)
+		close(ch)
+		return ch
+	}()
 )
 
 func newEvents(number int) []*auditinternal.Event {
@@ -43,118 +50,72 @@ func newEvents(number int) []*auditinternal.Event {
 	return events
 }
 
-func testBatchConfig() BatchConfig {
-	return BatchConfig{
-		BufferSize:     100,
-		MaxBatchSize:   10,
-		MaxBatchWait:   wait.ForeverTestTimeout,
-		ThrottleEnable: false,
-		AsyncDelegate:  true,
+func TestBufferedBackendCollectEvents(t *testing.T) {
+	config := NewDefaultBatchConfig()
+
+	testCases := []struct {
+		desc          string
+		timer         <-chan time.Time
+		stopCh        <-chan struct{}
+		numEvents     int
+		wantBatchSize int
+	}{
+		{
+			desc:          "max batch size encountered",
+			timer:         infiniteTimeCh,
+			stopCh:        wait.NeverStop,
+			numEvents:     config.MaxBatchSize + 1,
+			wantBatchSize: config.MaxBatchSize,
+		},
+		{
+			desc:   "timer expired",
+			timer:  closedTimeCh,
+			stopCh: wait.NeverStop,
+		},
+		{
+			desc:   "chanel closed",
+			timer:  infiniteTimeCh,
+			stopCh: closedStopCh,
+		},
 	}
-}
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.desc, func(t *testing.T) {
+			t.Parallel()
 
-func TestBatchedBackendCollectEvents(t *testing.T) {
-	config := testBatchConfig()
-	batchSize := config.MaxBatchSize
-	backend := NewBackend(&fake.Backend{}, config).(*bufferedBackend)
+			backend := NewBackend(&fake.Backend{}, config).(*bufferedBackend)
 
-	t.Log("Max batch size encountered.")
-	backend.ProcessEvents(newEvents(batchSize + 1)...)
-	batch := backend.collectEvents(nil, nil)
-	assert.Len(t, batch, batchSize, "Expected full batch")
+			backend.ProcessEvents(newEvents(tc.numEvents)...)
+			batch := backend.collectEvents(tc.timer, tc.stopCh)
 
-	t.Log("Partial batch should hang until timer expires.")
-	backend.ProcessEvents(newEvents(1)...)
-	tc := make(chan time.Time)
-	wg := sync.WaitGroup{}
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		batch = backend.collectEvents(tc, nil)
-	}()
-	// Wait for the queued events to be collected.
-	err := wait.Poll(time.Second, wait.ForeverTestTimeout, func() (bool, error) {
-		return len(backend.buffer) == 0, nil
-	})
-	require.NoError(t, err)
-
-	tc <- time.Now() // Trigger "timeout"
-	wg.Wait()
-	assert.Len(t, batch, 2, "Expected partial batch")
-
-	t.Log("Collected events should be delivered when stop channel is closed.")
-	backend.ProcessEvents(newEvents(3)...)
-	stopCh := make(chan struct{})
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		batch = backend.collectEvents(nil, stopCh)
-	}()
-	// Wait for the queued events to be collected.
-	err = wait.Poll(time.Second, wait.ForeverTestTimeout, func() (bool, error) {
-		return len(backend.buffer) == 0, nil
-	})
-	require.NoError(t, err)
-
-	close(stopCh)
-	wg.Wait()
-	assert.Len(t, batch, 3, "Expected partial batch")
-}
-
-func TestUnbatchedBackendCollectEvents(t *testing.T) {
-	config := testBatchConfig()
-	config.MaxBatchSize = 1 // No batching.
-	backend := NewBackend(&fake.Backend{}, config).(*bufferedBackend)
-
-	t.Log("Max batch size encountered.")
-	backend.ProcessEvents(newEvents(3)...)
-	batch := backend.collectEvents(nil, nil)
-	assert.Len(t, batch, 1, "Expected single event")
-
-	t.Log("Queue should always be drained.")
-	for len(backend.buffer) > 0 {
-		batch = backend.collectEvents(nil, nil)
-		assert.Len(t, batch, 1, "Expected single event")
+			require.Equal(t, tc.wantBatchSize, len(batch), "unexpected batch size")
+		})
 	}
-
-	t.Log("Collection should hault when stop channel is closed.")
-	stopCh := make(chan struct{})
-	wg := sync.WaitGroup{}
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		batch = backend.collectEvents(nil, stopCh)
-	}()
-	close(stopCh)
-	wg.Wait()
-	assert.Empty(t, batch, "Empty final batch")
 }
 
 func TestBufferedBackendProcessEventsAfterStop(t *testing.T) {
 	t.Parallel()
 
-	backend := NewBackend(&fake.Backend{}, testBatchConfig()).(*bufferedBackend)
+	backend := NewBackend(&fake.Backend{}, NewDefaultBatchConfig()).(*bufferedBackend)
 
-	closedStopCh := make(chan struct{})
-	close(closedStopCh)
 	backend.Run(closedStopCh)
 	backend.Shutdown()
 	backend.ProcessEvents(newEvents(1)...)
 	batch := backend.collectEvents(infiniteTimeCh, wait.NeverStop)
 
-	require.Empty(t, batch, "processed events after the backed has been stopped")
+	require.Equal(t, 0, len(batch), "processed events after the backed has been stopped")
 }
 
 func TestBufferedBackendProcessEventsBufferFull(t *testing.T) {
 	t.Parallel()
 
-	config := testBatchConfig()
+	config := NewDefaultBatchConfig()
 	config.BufferSize = 1
 	backend := NewBackend(&fake.Backend{}, config).(*bufferedBackend)
 
 	backend.ProcessEvents(newEvents(2)...)
 
-	require.Len(t, backend.buffer, 1, "buffed contains more elements than it should")
+	require.Equal(t, 1, len(backend.buffer), "buffed contains more elements than it should")
 }
 
 func TestBufferedBackendShutdownWaitsForDelegatedCalls(t *testing.T) {
@@ -168,7 +129,7 @@ func TestBufferedBackendShutdownWaitsForDelegatedCalls(t *testing.T) {
 			<-delegatedCallEndCh
 		},
 	}
-	config := testBatchConfig()
+	config := NewDefaultBatchConfig()
 	backend := NewBackend(delegateBackend, config)
 
 	// Run backend, process events, wait for them to be batched and for delegated call to start.
@@ -197,26 +158,4 @@ func TestBufferedBackendShutdownWaitsForDelegatedCalls(t *testing.T) {
 	// Wait for Shutdown to exit after delegated call has exited.
 	close(delegatedCallEndCh)
 	<-shutdownEndCh
-}
-
-func TestDelegateProcessEvents(t *testing.T) {
-	for _, async := range []bool{true, false} {
-		t.Run(fmt.Sprintf("async:%t", async), func(t *testing.T) {
-			config := testBatchConfig()
-			config.AsyncDelegate = async
-			wg := sync.WaitGroup{}
-			delegate := &fake.Backend{
-				OnRequest: func(events []*auditinternal.Event) {
-					assert.Len(t, events, config.MaxBatchSize, "Unexpected batch")
-					wg.Done()
-				},
-			}
-			b := NewBackend(delegate, config).(*bufferedBackend)
-			wg.Add(5)
-			for i := 0; i < 5; i++ {
-				b.processEvents(newEvents(config.MaxBatchSize))
-			}
-			wg.Wait()
-		})
-	}
 }

@@ -20,8 +20,6 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/stretchr/testify/require"
-
 	apiv1 "k8s.io/api/core/v1"
 	extensionsapiv1beta1 "k8s.io/api/extensions/v1beta1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -29,7 +27,7 @@ import (
 )
 
 func TestParseRuntimeConfig(t *testing.T) {
-	scheme := newFakeScheme(t)
+	scheme := newFakeScheme()
 	apiv1GroupVersion := apiv1.SchemeGroupVersion
 	testCases := []struct {
 		runtimeConfig         map[string]string
@@ -165,13 +163,13 @@ func newFakeAPIResourceConfigSource() *serverstore.ResourceConfig {
 	return ret
 }
 
-func newFakeScheme(t *testing.T) *runtime.Scheme {
+func newFakeScheme() *runtime.Scheme {
 	ret := runtime.NewScheme()
-	require.NoError(t, apiv1.AddToScheme(ret))
-	require.NoError(t, extensionsapiv1beta1.AddToScheme(ret))
+	apiv1.AddToScheme(ret)
+	extensionsapiv1beta1.AddToScheme(ret)
 
-	require.NoError(t, ret.SetVersionPriority(apiv1.SchemeGroupVersion))
-	require.NoError(t, ret.SetVersionPriority(extensionsapiv1beta1.SchemeGroupVersion))
+	ret.SetVersionPriority(apiv1.SchemeGroupVersion)
+	ret.SetVersionPriority(extensionsapiv1beta1.SchemeGroupVersion)
 
 	return ret
 }

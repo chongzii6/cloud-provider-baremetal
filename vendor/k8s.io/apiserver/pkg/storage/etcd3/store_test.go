@@ -31,15 +31,14 @@ import (
 	"github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/integration"
 	"github.com/coreos/pkg/capnslog"
-	apitesting "k8s.io/apimachinery/pkg/api/apitesting"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	apitesting "k8s.io/apimachinery/pkg/api/testing"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/apimachinery/pkg/util/diff"
-	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/apiserver/pkg/apis/example"
 	examplev1 "k8s.io/apiserver/pkg/apis/example/v1"
@@ -55,8 +54,8 @@ const defaultTestPrefix = "test!"
 
 func init() {
 	metav1.AddToGroupVersion(scheme, metav1.SchemeGroupVersion)
-	utilruntime.Must(example.AddToScheme(scheme))
-	utilruntime.Must(examplev1.AddToScheme(scheme))
+	example.AddToScheme(scheme)
+	examplev1.AddToScheme(scheme)
 
 	capnslog.SetGlobalLogLevel(capnslog.CRITICAL)
 }

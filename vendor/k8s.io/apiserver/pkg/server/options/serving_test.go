@@ -398,63 +398,68 @@ func TestServerRunWithSNI(t *testing.T) {
 		return strings.Replace(name, "*", "star", -1)
 	}
 
-	for title := range tests {
-		test := tests[title]
-		t.Run(title, func(t *testing.T) {
-			t.Parallel()
-			// create server cert
-			certDir := "testdata/" + specToName(test.Cert)
-			serverCertBundleFile := filepath.Join(certDir, "cert")
-			serverKeyFile := filepath.Join(certDir, "key")
-			err := getOrCreateTestCertFiles(serverCertBundleFile, serverKeyFile, test.Cert)
+NextTest:
+	for title, test := range tests {
+		// create server cert
+		certDir := "testdata/" + specToName(test.Cert)
+		serverCertBundleFile := filepath.Join(certDir, "cert")
+		serverKeyFile := filepath.Join(certDir, "key")
+		err := getOrCreateTestCertFiles(serverCertBundleFile, serverKeyFile, test.Cert)
+		if err != nil {
+			t.Errorf("%q - failed to create server cert: %v", title, err)
+			continue NextTest
+		}
+		ca, err := caCertFromBundle(serverCertBundleFile)
+		if err != nil {
+			t.Errorf("%q - failed to extract ca cert from server cert bundle: %v", title, err)
+			continue NextTest
+		}
+		caCerts := []*x509.Certificate{ca}
+
+		// create SNI certs
+		var namedCertKeys []utilflag.NamedCertKey
+		serverSig, err := certFileSignature(serverCertBundleFile, serverKeyFile)
+		if err != nil {
+			t.Errorf("%q - failed to get server cert signature: %v", title, err)
+			continue NextTest
+		}
+		signatures := map[string]int{
+			serverSig: -1,
+		}
+		for j, c := range test.SNICerts {
+			sniDir := filepath.Join(certDir, specToName(c.TestCertSpec))
+			certBundleFile := filepath.Join(sniDir, "cert")
+			keyFile := filepath.Join(sniDir, "key")
+			err := getOrCreateTestCertFiles(certBundleFile, keyFile, c.TestCertSpec)
 			if err != nil {
-				t.Fatalf("failed to create server cert: %v", err)
+				t.Errorf("%q - failed to create SNI cert %d: %v", title, j, err)
+				continue NextTest
 			}
-			ca, err := caCertFromBundle(serverCertBundleFile)
+
+			namedCertKeys = append(namedCertKeys, utilflag.NamedCertKey{
+				KeyFile:  keyFile,
+				CertFile: certBundleFile,
+				Names:    c.explicitNames,
+			})
+
+			ca, err := caCertFromBundle(certBundleFile)
 			if err != nil {
-				t.Fatalf("failed to extract ca cert from server cert bundle: %v", err)
+				t.Errorf("%q - failed to extract ca cert from SNI cert %d: %v", title, j, err)
+				continue NextTest
 			}
-			caCerts := []*x509.Certificate{ca}
+			caCerts = append(caCerts, ca)
 
-			// create SNI certs
-			var namedCertKeys []utilflag.NamedCertKey
-			serverSig, err := certFileSignature(serverCertBundleFile, serverKeyFile)
+			// store index in namedCertKeys with the signature as the key
+			sig, err := certFileSignature(certBundleFile, keyFile)
 			if err != nil {
-				t.Fatalf("failed to get server cert signature: %v", err)
+				t.Errorf("%q - failed get SNI cert %d signature: %v", title, j, err)
+				continue NextTest
 			}
-			signatures := map[string]int{
-				serverSig: -1,
-			}
-			for j, c := range test.SNICerts {
-				sniDir := filepath.Join(certDir, specToName(c.TestCertSpec))
-				certBundleFile := filepath.Join(sniDir, "cert")
-				keyFile := filepath.Join(sniDir, "key")
-				err := getOrCreateTestCertFiles(certBundleFile, keyFile, c.TestCertSpec)
-				if err != nil {
-					t.Fatalf("failed to create SNI cert %d: %v", j, err)
-				}
+			signatures[sig] = j
+		}
 
-				namedCertKeys = append(namedCertKeys, utilflag.NamedCertKey{
-					KeyFile:  keyFile,
-					CertFile: certBundleFile,
-					Names:    c.explicitNames,
-				})
-
-				ca, err := caCertFromBundle(certBundleFile)
-				if err != nil {
-					t.Fatalf("failed to extract ca cert from SNI cert %d: %v", j, err)
-				}
-				caCerts = append(caCerts, ca)
-
-				// store index in namedCertKeys with the signature as the key
-				sig, err := certFileSignature(certBundleFile, keyFile)
-				if err != nil {
-					t.Fatalf("failed get SNI cert %d signature: %v", j, err)
-				}
-				signatures[sig] = j
-			}
-
-			stopCh := make(chan struct{})
+		stopCh := make(chan struct{})
+		func() {
 			defer close(stopCh)
 
 			// launch server
@@ -464,7 +469,7 @@ func TestServerRunWithSNI(t *testing.T) {
 			config.Version = &v
 
 			config.EnableIndex = true
-			secureOptions := (&SecureServingOptions{
+			secureOptions := WithLoopback(&SecureServingOptions{
 				BindAddress: net.ParseIP("127.0.0.1"),
 				BindPort:    6443,
 				ServerCert: GeneratableKeyCert{
@@ -474,24 +479,26 @@ func TestServerRunWithSNI(t *testing.T) {
 					},
 				},
 				SNICertKeys: namedCertKeys,
-			}).WithLoopback()
+			})
 			// use a random free port
 			ln, err := net.Listen("tcp", "127.0.0.1:0")
 			if err != nil {
-				t.Fatalf("failed to listen on 127.0.0.1:0")
+				t.Errorf("failed to listen on 127.0.0.1:0")
 			}
 
 			secureOptions.Listener = ln
 			// get port
 			secureOptions.BindPort = ln.Addr().(*net.TCPAddr).Port
 			config.LoopbackClientConfig = &restclient.Config{}
-			if err := secureOptions.ApplyTo(&config.SecureServing, &config.LoopbackClientConfig); err != nil {
-				t.Fatalf("failed applying the SecureServingOptions: %v", err)
+			if err := secureOptions.ApplyTo(&config); err != nil {
+				t.Errorf("%q - failed applying the SecureServingOptions: %v", title, err)
+				return
 			}
 
 			s, err := config.Complete(nil).New("test", server.NewEmptyDelegate())
 			if err != nil {
-				t.Fatalf("failed creating the server: %v", err)
+				t.Errorf("%q - failed creating the server: %v", title, err)
+				return
 			}
 
 			// add poststart hook to know when the server is up.
@@ -523,19 +530,21 @@ func TestServerRunWithSNI(t *testing.T) {
 				ServerName: test.ServerName, // used for SNI in the client HELLO packet
 			})
 			if err != nil {
-				t.Fatalf("failed to connect: %v", err)
+				t.Errorf("%q - failed to connect: %v", title, err)
+				return
 			}
-			defer conn.Close()
 
 			// check returned server certificate
 			sig := x509CertSignature(conn.ConnectionState().PeerCertificates[0])
 			gotCertIndex, found := signatures[sig]
 			if !found {
-				t.Errorf("unknown signature returned from server: %s", sig)
+				t.Errorf("%q - unknown signature returned from server: %s", title, sig)
 			}
 			if gotCertIndex != test.ExpectedCertIndex {
-				t.Errorf("expected cert index %d, got cert index %d", test.ExpectedCertIndex, gotCertIndex)
+				t.Errorf("%q - expected cert index %d, got cert index %d", title, test.ExpectedCertIndex, gotCertIndex)
 			}
+
+			conn.Close()
 
 			// check that the loopback client can connect
 			host := "127.0.0.1"
@@ -545,25 +554,28 @@ func TestServerRunWithSNI(t *testing.T) {
 			s.LoopbackClientConfig.Host = net.JoinHostPort(host, strconv.Itoa(secureOptions.BindPort))
 			if test.ExpectLoopbackClientError {
 				if err == nil {
-					t.Fatalf("expected error creating loopback client config")
+					t.Errorf("%q - expected error creating loopback client config", title)
 				}
 				return
 			}
 			if err != nil {
-				t.Fatalf("failed creating loopback client config: %v", err)
+				t.Errorf("%q - failed creating loopback client config: %v", title, err)
+				return
 			}
 			client, err := discovery.NewDiscoveryClientForConfig(s.LoopbackClientConfig)
 			if err != nil {
-				t.Fatalf("failed to create loopback client: %v", err)
+				t.Errorf("%q - failed to create loopback client: %v", title, err)
+				return
 			}
 			got, err := client.ServerVersion()
 			if err != nil {
-				t.Fatalf("failed to connect with loopback client: %v", err)
+				t.Errorf("%q - failed to connect with loopback client: %v", title, err)
+				return
 			}
 			if expected := &v; !reflect.DeepEqual(got, expected) {
-				t.Errorf("loopback client didn't get correct version info: expected=%v got=%v", expected, got)
+				t.Errorf("%q - loopback client didn't get correct version info: expected=%v got=%v", title, expected, got)
 			}
-		})
+		}()
 	}
 }
 
