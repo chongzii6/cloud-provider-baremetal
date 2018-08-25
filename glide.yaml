@@ -10,6 +10,8 @@ import:
   version: release-1.11
   subpackages:
   - pkg/apis/meta/v1
+- package: k8s.io/apiextensions-apiserver
+  version: release-1.11
 - package: k8s.io/apiserver
   version: release-1.11
   subpackages:

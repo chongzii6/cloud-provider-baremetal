@@ -74,23 +74,11 @@ func (a *mutatingDispatcher) Dispatch(ctx context.Context, attr *generic.Version
 	}
 
 	// convert attr.VersionedObject to the internal version in the underlying admission.Attributes
-	if attr.VersionedObject != nil {
-		return a.plugin.scheme.Convert(attr.VersionedObject, attr.Attributes.GetObject(), nil)
-	}
-	return nil
+	return a.plugin.scheme.Convert(attr.VersionedObject, attr.Attributes.GetObject(), nil)
 }
 
 // note that callAttrMutatingHook updates attr
 func (a *mutatingDispatcher) callAttrMutatingHook(ctx context.Context, h *v1beta1.Webhook, attr *generic.VersionedAttributes) error {
-	if attr.IsDryRun() {
-		if h.SideEffects == nil {
-			return &webhookerrors.ErrCallingWebhook{WebhookName: h.Name, Reason: fmt.Errorf("Webhook SideEffects is nil")}
-		}
-		if !(*h.SideEffects == v1beta1.SideEffectClassNone || *h.SideEffects == v1beta1.SideEffectClassNoneOnDryRun) {
-			return webhookerrors.NewDryRunUnsupportedErr(h.Name)
-		}
-	}
-
 	// Make the webhook request
 	request := request.CreateAdmissionReview(attr)
 	client, err := a.cm.HookClient(h)
@@ -106,13 +94,6 @@ func (a *mutatingDispatcher) callAttrMutatingHook(ctx context.Context, h *v1beta
 		return &webhookerrors.ErrCallingWebhook{WebhookName: h.Name, Reason: fmt.Errorf("Webhook response was absent")}
 	}
 
-	for k, v := range response.Response.AuditAnnotations {
-		key := h.Name + "/" + k
-		if err := attr.AddAnnotation(key, v); err != nil {
-			glog.Warningf("Failed to set admission audit annotation %s to %s for mutating webhook %s: %v", key, v, h.Name, err)
-		}
-	}
-
 	if !response.Response.Allowed {
 		return webhookerrors.ToStatusErr(h.Name, response.Response.Result)
 	}
@@ -125,15 +106,6 @@ func (a *mutatingDispatcher) callAttrMutatingHook(ctx context.Context, h *v1beta
 	if err != nil {
 		return apierrors.NewInternalError(err)
 	}
-	if len(patchObj) == 0 {
-		return nil
-	}
-
-	// if a non-empty patch was provided, and we have no object we can apply it to (e.g. a DELETE admission operation), error
-	if attr.VersionedObject == nil {
-		return apierrors.NewInternalError(fmt.Errorf("admission webhook %q attempted to modify the object, which is not supported for this operation", h.Name))
-	}
-
 	objJS, err := runtime.Encode(a.plugin.jsonSerializer, attr.VersionedObject)
 	if err != nil {
 		return apierrors.NewInternalError(err)

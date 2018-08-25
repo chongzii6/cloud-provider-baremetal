@@ -70,7 +70,11 @@ type store struct {
 	pathPrefix    string
 	watcher       *watcher
 	pagingEnabled bool
-	leaseManager  *leaseManager
+}
+
+type elemForDecode struct {
+	data []byte
+	rev  uint64
 }
 
 type objState struct {
@@ -103,9 +107,8 @@ func newStore(c *clientv3.Client, quorumRead, pagingEnabled bool, codec runtime.
 		// for compatibility with etcd2 impl.
 		// no-op for default prefix of '/registry'.
 		// keeps compatibility with etcd2 impl for custom prefixes that don't start with '/'
-		pathPrefix:   path.Join("/", prefix),
-		watcher:      newWatcher(c, codec, versioner, transformer),
-		leaseManager: newDefaultLeaseManager(c),
+		pathPrefix: path.Join("/", prefix),
+		watcher:    newWatcher(c, codec, versioner, transformer),
 	}
 	if !quorumRead {
 		// In case of non-quorum reads, we can set WithSerializable()
@@ -233,7 +236,7 @@ func (s *store) conditionalDelete(ctx context.Context, key string, out runtime.O
 		if err != nil {
 			return err
 		}
-		if err := preconditions.Check(key, origState.obj); err != nil {
+		if err := checkPreconditions(key, preconditions, origState.obj); err != nil {
 			return err
 		}
 		txnResp, err := s.client.KV.Txn(ctx).If(
@@ -294,7 +297,7 @@ func (s *store) GuaranteedUpdate(
 
 	transformContext := authenticatedDataString(key)
 	for {
-		if err := preconditions.Check(key, origState.obj); err != nil {
+		if err := checkPreconditions(key, preconditions, origState.obj); err != nil {
 			return err
 		}
 
@@ -529,7 +532,7 @@ func (s *store) List(ctx context.Context, key, resourceVersion string, pred stor
 
 	case s.pagingEnabled && pred.Limit > 0:
 		if len(resourceVersion) > 0 {
-			fromRV, err := s.versioner.ParseResourceVersion(resourceVersion)
+			fromRV, err := s.versioner.ParseListResourceVersion(resourceVersion)
 			if err != nil {
 				return apierrors.NewBadRequest(fmt.Sprintf("invalid resource version: %v", err))
 			}
@@ -544,7 +547,7 @@ func (s *store) List(ctx context.Context, key, resourceVersion string, pred stor
 
 	default:
 		if len(resourceVersion) > 0 {
-			fromRV, err := s.versioner.ParseResourceVersion(resourceVersion)
+			fromRV, err := s.versioner.ParseListResourceVersion(resourceVersion)
 			if err != nil {
 				return apierrors.NewBadRequest(fmt.Sprintf("invalid resource version: %v", err))
 			}
@@ -671,7 +674,7 @@ func (s *store) WatchList(ctx context.Context, key string, resourceVersion strin
 }
 
 func (s *store) watch(ctx context.Context, key string, rv string, pred storage.SelectionPredicate, recursive bool) (watch.Interface, error) {
-	rev, err := s.versioner.ParseResourceVersion(rv)
+	rev, err := s.versioner.ParseWatchResourceVersion(rv)
 	if err != nil {
 		return nil, err
 	}
@@ -755,11 +758,13 @@ func (s *store) ttlOpts(ctx context.Context, ttl int64) ([]clientv3.OpOption, er
 	if ttl == 0 {
 		return nil, nil
 	}
-	id, err := s.leaseManager.GetLease(ctx, ttl)
+	// TODO: one lease per ttl key is expensive. Based on current use case, we can have a long window to
+	// put keys within into same lease. We shall benchmark this and optimize the performance.
+	lcr, err := s.client.Lease.Grant(ctx, ttl)
 	if err != nil {
 		return nil, err
 	}
-	return []clientv3.OpOption{clientv3.WithLease(id)}, nil
+	return []clientv3.OpOption{clientv3.WithLease(clientv3.LeaseID(lcr.ID))}, nil
 }
 
 // decode decodes value of bytes into object. It will also set the object resource version to rev.
@@ -787,6 +792,21 @@ func appendListItem(v reflect.Value, data []byte, rev uint64, pred storage.Selec
 	versioner.UpdateObject(obj, rev)
 	if matched, err := pred.Matches(obj); err == nil && matched {
 		v.Set(reflect.Append(v, reflect.ValueOf(obj).Elem()))
+	}
+	return nil
+}
+
+func checkPreconditions(key string, preconditions *storage.Preconditions, out runtime.Object) error {
+	if preconditions == nil {
+		return nil
+	}
+	objMeta, err := meta.Accessor(out)
+	if err != nil {
+		return storage.NewInternalErrorf("can't enforce preconditions %v on un-introspectable object %v, got error: %v", *preconditions, out, err)
+	}
+	if preconditions.UID != nil && *preconditions.UID != objMeta.GetUID() {
+		errMsg := fmt.Sprintf("Precondition failed: UID in precondition: %v, UID in object meta: %v", *preconditions.UID, objMeta.GetUID())
+		return storage.NewInvalidObjError(key, errMsg)
 	}
 	return nil
 }
