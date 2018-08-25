@@ -1,5 +1,5 @@
-hash: 7ec6b6b95cd0a9fe669a7d57c89b257ba13231588eed4cd7cf2a3c655371e029
-updated: 2018-08-25T10:27:32.472297632-04:00
+hash: 7d445369732714e37f1e8525a3fa53f76f9d6c9aca96c29d618862be9febe7e6
+updated: 2018-08-25T10:48:02.082459127-04:00
 imports:
 - name: bitbucket.org/ww/goautoneg
   version: 75cd24fc2f2c2a2088577d12123ddee5f54e0675
@@ -549,7 +549,7 @@ imports:
 - name: gopkg.in/yaml.v2
   version: 670d4cfef0544295bc27a114dbac37980d83185a
 - name: k8s.io/api
-  version: 2d6f90ab1293a1fb871cf149423ebb72aa7423aa
+  version: 9e325467be0d83799fa9d630047839982ced21d0
   subpackages:
   - admission/v1beta1
   - admissionregistration/v1alpha1
@@ -637,7 +637,7 @@ imports:
   - third_party/forked/golang/json
   - third_party/forked/golang/reflect
 - name: k8s.io/apiserver
-  version: e59fba717fdb3c4dafdbe6c5af9653313c288119
+  version: 13d596dfbbe4adc1d805221deac7ea011f54847c
   subpackages:
   - pkg/admission
   - pkg/admission/configuration

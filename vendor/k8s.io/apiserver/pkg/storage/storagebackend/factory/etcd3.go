@@ -29,15 +29,14 @@ import (
 	"k8s.io/apiserver/pkg/storage/value"
 )
 
-// The short keepalive timeout and interval have been chosen to aggressively
-// detect a failed etcd server without introducing much overhead.
-const keepaliveTime = 30 * time.Second
-const keepaliveTimeout = 10 * time.Second
-
-// dialTimeout is the timeout for failing to establish a connection.
-// It is set to 20 seconds as times shorter than that will cause TLS connections to fail
-// on heavily loaded arm64 CPUs (issue #64649)
-const dialTimeout = 20 * time.Second
+var (
+	// The short keepalive timeout and interval have been chosen to aggressively
+	// detect a failed etcd server without introducing much overhead.
+	keepaliveTime    = 30 * time.Second
+	keepaliveTimeout = 10 * time.Second
+	// dialTimeout is the timeout for failing to establish a connection.
+	dialTimeout = 10 * time.Second
+)
 
 func newETCD3Storage(c storagebackend.Config) (storage.Interface, DestroyFunc, error) {
 	tlsInfo := transport.TLSInfo{

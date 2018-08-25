@@ -7,13 +7,13 @@ import:
   subpackages:
   - core/v1
 - package: k8s.io/apimachinery
-  version: release-1.11
+  version: 488889b0007f63ffee90b66a34a2deca9ec58774
   subpackages:
   - pkg/apis/meta/v1
 - package: k8s.io/apiextensions-apiserver
   version: release-1.11
 - package: k8s.io/apiserver
-  version: release-1.11
+  version: 13d596dfbbe4adc1d805221deac7ea011f54847c
   subpackages:
   - pkg/server/healthz
   - pkg/util/flag

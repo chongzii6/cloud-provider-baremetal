@@ -160,11 +160,7 @@ func (s *DelegatingAuthenticationOptions) ApplyTo(c *server.AuthenticationInfo, 
 
 	clientCA, err := s.getClientCA()
 	if err != nil {
-		if _, ignorable := err.(ignorableError); !ignorable {
-			return err
-		} else {
-			glog.Warning(err)
-		}
+		return err
 	}
 	if err = c.ApplyClientCert(clientCA.ClientCA, servingInfo); err != nil {
 		return fmt.Errorf("unable to load client CA file: %v", err)
@@ -204,11 +200,7 @@ func (s *DelegatingAuthenticationOptions) ToAuthenticationConfig() (authenticato
 
 	clientCA, err := s.getClientCA()
 	if err != nil {
-		if _, ignorable := err.(ignorableError); !ignorable {
-			return authenticatorfactory.DelegatingAuthenticatorConfig{}, err
-		} else {
-			glog.Warning(err)
-		}
+		return authenticatorfactory.DelegatingAuthenticatorConfig{}, err
 	}
 	requestHeader, err := s.getRequestHeader()
 	if err != nil {
@@ -248,7 +240,7 @@ func (s *DelegatingAuthenticationOptions) getClientCA() (*ClientCertAuthenticati
 		return nil, err
 	}
 	if incluster == nil {
-		return &s.ClientCert, ignorableError{fmt.Errorf("cluster doesn't provide client-ca-file in configmap/%s in %s, so client certificate authentication to extension api-server won't work.", authenticationConfigMapName, authenticationConfigMapNamespace)}
+		return nil, fmt.Errorf("cluster doesn't provide client-ca-file")
 	}
 	return incluster, nil
 }
@@ -402,5 +394,3 @@ func (s *DelegatingAuthenticationOptions) newTokenAccessReview() (authentication
 
 	return client.TokenReviews(), nil
 }
-
-type ignorableError struct{ error }
