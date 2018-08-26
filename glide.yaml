@@ -4,16 +4,17 @@ import:
 - package: github.com/spf13/pflag
   version: ^1.0.2
 - package: k8s.io/api
+  version: kubernetes-1.11.2
   subpackages:
   - core/v1
 - package: k8s.io/apimachinery
-  version: 103fd098999dc9c0c88536f5c9ad2e5da39373ae
+  version: kubernetes-1.11.2
   subpackages:
   - pkg/apis/meta/v1
 - package: k8s.io/apiextensions-apiserver
-  version: release-1.11
+  version: kubernetes-1.11.2
 - package: k8s.io/apiserver
-  version: 13d596dfbbe4adc1d805221deac7ea011f54847c
+  version: kubernetes-1.11.2
   subpackages:
   - pkg/server/healthz
   - pkg/util/flag
