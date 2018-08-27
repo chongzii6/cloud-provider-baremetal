@@ -9,6 +9,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/kubernetes/pkg/cloudprovider"
+	"k8s.io/kubernetes/pkg/controller"
 )
 
 const (
@@ -44,6 +45,12 @@ func newBmCloudProvider(io.Reader) (cloudprovider.Interface, error) {
 	return &BmCloudProvider{NewBMLoadBalancer(cl, ns, cm)}, nil
 }
 
+// Initialize provides the cloud with a kubernetes client builder and may spawn goroutines
+// to perform housekeeping activities within the cloud provider.
+func (k *BmCloudProvider) Initialize(clientBuilder controller.ControllerClientBuilder) {
+
+}
+
 // LoadBalancer returns a loadbalancer interface. Also returns true if the interface is supported, false otherwise.
 func (k *BmCloudProvider) LoadBalancer() (cloudprovider.LoadBalancer, bool) {
 	return k.lb, true
@@ -56,7 +63,7 @@ func (k *BmCloudProvider) Instances() (cloudprovider.Instances, bool) {
 
 // Zones returns a zones interface. Also returns true if the interface is supported, false otherwise.
 func (k *BmCloudProvider) Zones() (cloudprovider.Zones, bool) {
-	return zones{}, true
+	return nil, false
 }
 
 // Clusters returns a clusters interface.  Also returns true if the interface is supported, false otherwise.
@@ -79,8 +86,13 @@ func (k *BmCloudProvider) ScrubDNS(nameservers, searches []string) (nsOut, srchO
 	return nil, nil
 }
 
-type zones struct{}
-
-func (z zones) GetZone() (cloudprovider.Zone, error) {
-	return cloudprovider.Zone{FailureDomain: "FailureDomain1", Region: "Region1"}, nil
+// HasClusterID returns true if a ClusterID is required and set
+func (k *BmCloudProvider) HasClusterID() bool {
+	return false
 }
+
+// type zones struct{}
+
+// func (z zones) GetZone() (cloudprovider.Zone, error) {
+// 	return cloudprovider.Zone{FailureDomain: "FailureDomain1", Region: "Region1"}, nil
+// }
