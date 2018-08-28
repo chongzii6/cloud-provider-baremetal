@@ -6,8 +6,8 @@ RUN go get -u github.com/derekparker/delve/cmd/dlv \
   && chmod a+x /go/bin/entry.sh
 
 COPY . /go/src/github.com/chongzii6/cloud-provider-baremetal
-RUN cd /go/src/github.com/chongzii6/cloud-provider-baremetal \
-  && go build
+#RUN cd /go/src/github.com/chongzii6/cloud-provider-baremetal \
+#  && go build
 
 EXPOSE 2345
 WORKDIR /go/src/github.com/chongzii6/cloud-provider-baremetal
