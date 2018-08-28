@@ -50,7 +50,7 @@ func newBmCloudProvider(config io.Reader) (cloudprovider.Interface, error) {
 // Initialize provides the cloud with a kubernetes client builder and may spawn goroutines
 // to perform housekeeping activities within the cloud provider.
 func (k *BmCloudProvider) Initialize(clientBuilder controller.ControllerClientBuilder) {
-
+	return
 }
 
 // LoadBalancer returns a loadbalancer interface. Also returns true if the interface is supported, false otherwise.
@@ -90,7 +90,7 @@ func (k *BmCloudProvider) ScrubDNS(nameservers, searches []string) (nsOut, srchO
 
 // HasClusterID returns true if a ClusterID is required and set
 func (k *BmCloudProvider) HasClusterID() bool {
-	return false
+	return true
 }
 
 // type zones struct{}
