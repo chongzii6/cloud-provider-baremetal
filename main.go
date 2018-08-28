@@ -11,11 +11,9 @@ import (
 	"k8s.io/apiserver/pkg/util/logs"
 	"k8s.io/kubernetes/cmd/cloud-controller-manager/app"
 	_ "k8s.io/kubernetes/pkg/client/metrics/prometheus" // for client metric registration
-	"k8s.io/kubernetes/pkg/cloudprovider"
 	// NOTE: Importing all in-tree cloud-providers is not required when
 	// implementing an out-of-tree cloud-provider.
-	"github.com/chongzii6/cloud-provider-baremetal/baremetalcp"
-	"github.com/golang/glog"
+	_ "github.com/chongzii6/cloud-provider-baremetal/baremetalcp"
 	_ "k8s.io/kubernetes/pkg/cloudprovider/providers"
 	_ "k8s.io/kubernetes/pkg/version/prometheus" // for version metric registration
 
@@ -51,10 +49,10 @@ func main() {
 
 	rand.Seed(time.Now().UTC().UnixNano())
 
-	_, err := cloudprovider.InitCloudProvider(baremetalcp.ProviderName, "")
-	if err != nil {
-		glog.Fatalf("Cloud provider could not be initialized: %v", err)
-	}
+	// _, err := cloudprovider.InitCloudProvider(baremetalcp.ProviderName, "")
+	// if err != nil {
+	// 	glog.Fatalf("Cloud provider could not be initialized: %v", err)
+	// }
 
 	command := app.NewCloudControllerManagerCommand()
 
