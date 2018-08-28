@@ -3,6 +3,8 @@ package baremetalcp
 import (
 	"context"
 
+	"github.com/golang/glog"
+
 	"k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/kubernetes/pkg/cloudprovider"
@@ -49,6 +51,8 @@ func (k *BmLoadBalancer) GetLoadBalancer(ctx context.Context, clusterName string
 	// 	}
 	// }
 
+	glog.Infof("GetLoadBalancer: %s/%s", clusterName, service.GetName())
+
 	return nil, false, nil
 }
 
@@ -59,6 +63,7 @@ func (k *BmLoadBalancer) GetLoadBalancer(ctx context.Context, clusterName string
 func (k *BmLoadBalancer) EnsureLoadBalancer(ctx context.Context, clusterName string, service *v1.Service, nodes []*v1.Node) (*v1.LoadBalancerStatus, error) {
 	// EnsureLoadBalancer(clusterName string, service *v1.Service, nodes []*v1.Node) (*v1.LoadBalancerStatus, error)
 	// return k.syncLoadBalancer(service)
+	glog.Infof("EnsureLoadBalancer: %s/%s", clusterName, service.GetName())
 	return nil, nil
 }
 
@@ -70,6 +75,7 @@ func (k *BmLoadBalancer) UpdateLoadBalancer(ctx context.Context, clusterName str
 	// UpdateLoadBalancer(clusterName string, service *v1.Service, nodes []*v1.Node) error
 	// _, err := k.syncLoadBalancer(service)
 	// return err
+	glog.Infof("UpdateLoadBalancer: %s/%s", clusterName, service.GetName())
 	return nil
 }
 
@@ -84,5 +90,6 @@ func (k *BmLoadBalancer) UpdateLoadBalancer(ctx context.Context, clusterName str
 func (k *BmLoadBalancer) EnsureLoadBalancerDeleted(ctx context.Context, clusterName string, service *v1.Service) error {
 	// EnsureLoadBalancerDeleted(clusterName string, service *v1.Service) error
 	// return k.deleteLoadBalancer(service)
+	glog.Infof("EnsureLoadBalancerDeleted: %s/%s", clusterName, service.GetName())
 	return nil
 }
