@@ -3,7 +3,6 @@ package baremetalcp
 import (
 	"fmt"
 	"io"
-
 	"os"
 
 	"k8s.io/client-go/kubernetes"
@@ -17,7 +16,10 @@ const (
 )
 
 func init() {
-	cloudprovider.RegisterCloudProvider(ProviderName, newBmCloudProvider)
+	// cloudprovider.RegisterCloudProvider(ProviderName, newBmCloudProvider)
+	cloudprovider.RegisterCloudProvider(ProviderName, func(config io.Reader) (cloudprovider.Interface, error) {
+		return newBmCloudProvider(config)
+	})
 }
 
 type BmCloudProvider struct {
@@ -26,7 +28,7 @@ type BmCloudProvider struct {
 
 var _ cloudprovider.Interface = &BmCloudProvider{}
 
-func newBmCloudProvider(io.Reader) (cloudprovider.Interface, error) {
+func newBmCloudProvider(config io.Reader) (cloudprovider.Interface, error) {
 	ns := os.Getenv("CLOUDPROVIDER_NAMESPACE")
 	cm := os.Getenv("CLOUDPROVIDER_CONFIG_MAP")
 
