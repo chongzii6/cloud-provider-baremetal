@@ -1,4 +1,5 @@
-
+#/bin/bash
+echo -- start git pull
 cd /go/src/github.com/chongzii6/cloud-provider-baremetal
 git pull
 
