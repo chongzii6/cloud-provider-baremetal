@@ -51,3 +51,7 @@
 
 [[constraint]]
   name = "github.com/docker/docker"
+
+[[constraint]]
+  name = "go.etcd.io/etcd"
+  version = "3.3.9"

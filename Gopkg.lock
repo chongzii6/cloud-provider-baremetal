@@ -49,14 +49,6 @@
   version = "v10.6.2"
 
 [[projects]]
-  digest = "1:f9ae348e1f793dcf9ed930ed47136a67343dbd6809c5c91391322267f4476892"
-  name = "github.com/Microsoft/go-winio"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "97e4973ce50b2ff5f09635a57e2b88a037aae829"
-  version = "v0.4.11"
-
-[[projects]]
   digest = "1:002edd3097e9eb1ad56da7e29ed3bfdc8f85765d667a84246b38a7226c829ad2"
   name = "github.com/NYTimes/gziphandler"
   packages = ["."]
@@ -203,43 +195,28 @@
   revision = "edc3ab29cdff8694dd6feb85cfeb4b5f1b38ed9c"
 
 [[projects]]
-  digest = "1:79f22cb18a03a06e745c1a2bb6537b11a1a863111a004b01d3a30a1820b84683"
+  digest = "1:eff83ffcbb07403c6d1b9e2f3d73910c6c93652803360f09b034209515ccc9f4"
   name = "github.com/docker/docker"
   packages = [
-    "api",
     "api/types",
     "api/types/blkiodev",
     "api/types/container",
-    "api/types/events",
     "api/types/filters",
-    "api/types/image",
     "api/types/mount",
     "api/types/network",
     "api/types/registry",
     "api/types/strslice",
     "api/types/swarm",
     "api/types/swarm/runtime",
-    "api/types/time",
     "api/types/versions",
-    "api/types/volume",
-    "client",
-    "pkg/ioutils",
-    "pkg/longpath",
-    "pkg/mount",
-    "pkg/system",
-    "pkg/tlsconfig",
   ]
   pruneopts = "UT"
   revision = "4f3616fb1c112e206b88cb7a9922bf49067a7756"
 
 [[projects]]
-  digest = "1:b6b5c3e8da0fb8073cd2886ba249a40f4402b4391ca6eba905a142cceea97a12"
+  digest = "1:87dcb59127512b84097086504c16595cf8fef35b9e0bfca565dfc06e198158d7"
   name = "github.com/docker/go-connections"
-  packages = [
-    "nat",
-    "sockets",
-    "tlsconfig",
-  ]
+  packages = ["nat"]
   pruneopts = "UT"
   revision = "3ede32e2033de7505e6500d6c868c2b9ed9f169d"
   version = "v0.3.0"
@@ -250,14 +227,6 @@
   packages = ["."]
   pruneopts = "UT"
   revision = "9e638d38cf6977a37a8ea0078f3ee75a7cdb2dd1"
-
-[[projects]]
-  branch = "master"
-  digest = "1:4841e14252a2cecf11840bd05230412ad469709bbacfc12467e2ce5ad07f339b"
-  name = "github.com/docker/libtrust"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "aabc10ec26b754e797f9028f4589c5b7bd90dc20"
 
 [[projects]]
   digest = "1:1f1d454098ba2f8e7b87f0166e30533a72dddb80bace79643a78933fa4889613"
@@ -589,14 +558,6 @@
   version = "v2.0.1"
 
 [[projects]]
-  digest = "1:40e195917a951a8bf867cd05de2a46aaf1806c50cf92eebf4c16f78cd196f747"
-  name = "github.com/pkg/errors"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "645ef00459ed84a119197bfb8d8205042c6df63d"
-  version = "v0.8.0"
-
-[[projects]]
   digest = "1:1cec06981f734a2a5927ce17a22b34e9f3fa458b5c70f5db9ed58f7e389338f7"
   name = "github.com/prometheus/client_golang"
   packages = ["prometheus"]
@@ -646,14 +607,6 @@
   pruneopts = "UT"
   revision = "f58768cc1a7a7e77a3bd49e98cdd21419399b6a3"
   version = "v1.2.0"
-
-[[projects]]
-  digest = "1:d867dfa6751c8d7a435821ad3b736310c2ed68945d05b50fb9d23aee0540c8cc"
-  name = "github.com/sirupsen/logrus"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "3e01752db0189b9157070a0e1668a620f9a85da2"
-  version = "v1.0.6"
 
 [[projects]]
   digest = "1:7c7ef7c1bf5eb925d97c670fba41f85f6dce02c334c96c23f74a4dadb208e4a7"
@@ -728,6 +681,14 @@
   revision = "1e2cbf647e57fa90353612074fdfc42faf5073bf"
 
 [[projects]]
+  digest = "1:4f8b8e95cb44091ffd4c8583fc3540927e702398d9db82fae902759213bdf1f4"
+  name = "go.etcd.io/etcd"
+  packages = ["clientv3"]
+  pruneopts = "UT"
+  revision = "fca8add78a9d926166eb739b8e4a124434025ba3"
+  version = "v3.3.9"
+
+[[projects]]
   digest = "1:3f5d68a464a2687313193520f013ba68f30bb50e91e5f62b979d868b181ff670"
   name = "golang.org/x/crypto"
   packages = [
@@ -741,7 +702,7 @@
   revision = "49796115aa4b964c318aad4f3084fdb41e9aa067"
 
 [[projects]]
-  digest = "1:46ff2be6b1a0d7bd119065b830da9c91dd082ef2f2699c1d3dc7160f0a16edf2"
+  digest = "1:d99c7ffaa3deb269ccf4a1a050900e71111762ed1113547bfd701dbf0debc3e1"
   name = "golang.org/x/net"
   packages = [
     "context",
@@ -751,7 +712,6 @@
     "idna",
     "internal/timeseries",
     "lex/httplex",
-    "proxy",
     "trace",
     "websocket",
   ]
@@ -1396,9 +1356,9 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
-    "github.com/docker/docker/client",
     "github.com/golang/glog",
     "github.com/spf13/pflag",
+    "go.etcd.io/etcd/clientv3",
     "k8s.io/api/core/v1",
     "k8s.io/apiserver/pkg/server/healthz",
     "k8s.io/apiserver/pkg/util/flag",
