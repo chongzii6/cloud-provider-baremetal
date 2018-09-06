@@ -10,4 +10,4 @@ git pull
 echo -- go build
 go build
 
-/go/bin/dlv debug --headless --listen=:2345 --log -- --cloud-provider=BaremetalHT
+/go/bin/dlv debug --headless --listen=:2345 --log -- --cloud-provider=htnm --cloud-config=config/htnm.cfg

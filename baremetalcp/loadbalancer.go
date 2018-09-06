@@ -2,6 +2,7 @@ package baremetalcp
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/golang/glog"
 
@@ -53,6 +54,11 @@ func (k *BmLoadBalancer) GetLoadBalancer(ctx context.Context, clusterName string
 
 	glog.Infof("GetLoadBalancer: %s/%s", clusterName, service.GetName())
 
+	loadBalancerName := cloudprovider.GetLoadBalancerName(service)
+	_ = loadBalancerName
+
+	status = &v1.LoadBalancerStatus{}
+
 	return nil, false, nil
 }
 
@@ -63,7 +69,12 @@ func (k *BmLoadBalancer) GetLoadBalancer(ctx context.Context, clusterName string
 func (k *BmLoadBalancer) EnsureLoadBalancer(ctx context.Context, clusterName string, service *v1.Service, nodes []*v1.Node) (*v1.LoadBalancerStatus, error) {
 	// EnsureLoadBalancer(clusterName string, service *v1.Service, nodes []*v1.Node) (*v1.LoadBalancerStatus, error)
 	// return k.syncLoadBalancer(service)
-	glog.Infof("EnsureLoadBalancer: %s/%s", clusterName, service.GetName())
+	glog.V(4).Infof("EnsureLoadBalancer(%v, %v, %v, %v, %v, %v, %v)", clusterName, service.Namespace, service.Name, service.Spec.LoadBalancerIP, service.Spec.Ports, nodes, service.Annotations)
+	// glog.Infof("EnsureLoadBalancer: %s/%s", clusterName, service.GetName())
+	if len(nodes) == 0 {
+		return nil, fmt.Errorf("there are no available nodes for LoadBalancer service %s/%s", service.Namespace, service.Name)
+	}
+
 	return nil, nil
 }
 

@@ -10,6 +10,17 @@ import (
 	"k8s.io/api/core/v1"
 )
 
+//HTConfig for cloud htnm
+type HTConfig struct {
+	Global struct {
+		Cafile   string `gcfg:"cafile"`
+		Keyfile  string `gcfg:"keyfile"`
+		Cerfile  string `gcfg:"certfile"`
+		Agentkey string `gcfg:"agentkey"`
+		Reqkey   string `gcfg:"reqkey"`
+	}
+}
+
 type config struct {
 	Services []serviceConfig `json:"services"`
 }
