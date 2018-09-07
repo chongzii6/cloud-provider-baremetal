@@ -3,6 +3,9 @@ package baremetalcp
 import (
 	"context"
 	"fmt"
+	"log"
+
+	"github.com/chongzii6/haproxy-kube-agent/agent"
 
 	"github.com/golang/glog"
 
@@ -14,18 +17,21 @@ import (
 const configMapAnnotationKey = "k8s.co/cloud-provider-config"
 const serviceForwardMethodAnnotationKey = "k8s.co/keepalived-forward-method"
 
+//BmLoadBalancer loadbalancer
 type BmLoadBalancer struct {
-	kubeClient      *kubernetes.Clientset
-	namespace, name string
+	kubeClient *kubernetes.Clientset
+	config     HTConfig
 }
 
 var _ cloudprovider.LoadBalancer = &BmLoadBalancer{}
 
-func NewBMLoadBalancer(kubeClient *kubernetes.Clientset, ns, name string) cloudprovider.LoadBalancer {
-	return &BmLoadBalancer{kubeClient, ns, name}
+//NewBMLoadBalancer new BmLoadBalancer struct
+func NewBMLoadBalancer(kubeClient *kubernetes.Clientset, config HTConfig) cloudprovider.LoadBalancer {
+	return &BmLoadBalancer{kubeClient, config}
 }
 
 // TODO: Break this up into different interfaces (LB, etc) when we have more than one type of service
+
 // GetLoadBalancer returns whether the specified load balancer exists, and
 // if so, what its status is.
 // Implementations must treat the *v1.Service parameter as read-only and not modify it.
@@ -55,9 +61,12 @@ func (k *BmLoadBalancer) GetLoadBalancer(ctx context.Context, clusterName string
 	glog.Infof("GetLoadBalancer: %s/%s", clusterName, service.GetName())
 
 	loadBalancerName := cloudprovider.GetLoadBalancerName(service)
-	_ = loadBalancerName
-
-	status = &v1.LoadBalancerStatus{}
+	ip, err := k.config.GetLoadBalancer(loadBalancerName)
+	if err == nil {
+		return &v1.LoadBalancerStatus{
+			Ingress: []v1.LoadBalancerIngress{{IP: ip}},
+		}, true, nil
+	}
 
 	return nil, false, nil
 }
@@ -75,7 +84,15 @@ func (k *BmLoadBalancer) EnsureLoadBalancer(ctx context.Context, clusterName str
 		return nil, fmt.Errorf("there are no available nodes for LoadBalancer service %s/%s", service.Namespace, service.Name)
 	}
 
-	return nil, nil
+	loadBalancerIP := service.Spec.LoadBalancerIP
+	err := k.addLBReq(service, nodes, false)
+
+	if err == nil {
+		status := &v1.LoadBalancerStatus{}
+		status.Ingress = []v1.LoadBalancerIngress{{IP: loadBalancerIP}}
+		return status, nil
+	}
+	return nil, err
 }
 
 // UpdateLoadBalancer updates hosts under the specified load balancer.
@@ -87,7 +104,11 @@ func (k *BmLoadBalancer) UpdateLoadBalancer(ctx context.Context, clusterName str
 	// _, err := k.syncLoadBalancer(service)
 	// return err
 	glog.Infof("UpdateLoadBalancer: %s/%s", clusterName, service.GetName())
-	return nil
+	if len(nodes) == 0 {
+		return fmt.Errorf("there are no available nodes for LoadBalancer service %s/%s", service.Namespace, service.Name)
+	}
+	err := k.addLBReq(service, nodes, true)
+	return err
 }
 
 // EnsureLoadBalancerDeleted deletes the specified load balancer if it
@@ -102,5 +123,82 @@ func (k *BmLoadBalancer) EnsureLoadBalancerDeleted(ctx context.Context, clusterN
 	// EnsureLoadBalancerDeleted(clusterName string, service *v1.Service) error
 	// return k.deleteLoadBalancer(service)
 	glog.Infof("EnsureLoadBalancerDeleted: %s/%s", clusterName, service.GetName())
+	loadBalancerName := cloudprovider.GetLoadBalancerName(service)
+	loadBalancerIP := service.Spec.LoadBalancerIP
+	req := &agent.Request{
+		Action: agent.DELETE,
+		LbName: loadBalancerName,
+	}
+
+	err := k.config.SendReq(loadBalancerIP, req)
+	if err != nil {
+		log.Println(err)
+	}
+	return err
+}
+
+// The LB needs to be configured with instance addresses on the same
+// subnet as the LB (aka opts.SubnetID).  Currently we're just
+// guessing that the node's InternalIP is the right address - and that
+// should be sufficient for all "normal" cases.
+func (k *BmLoadBalancer) nodeAddressForLB(node *v1.Node) (string, error) {
+	addrs := node.Status.Addresses
+	if len(addrs) == 0 {
+		return "", fmt.Errorf("ErrNoAddressFound")
+	}
+
+	for _, addr := range addrs {
+		if addr.Type == v1.NodeInternalIP {
+			return addr.Address, nil
+		}
+	}
+
+	return addrs[0].Address, nil
+}
+
+func (k *BmLoadBalancer) addLBReq(service *v1.Service, nodes []*v1.Node, update bool) error {
+
+	loadBalancerName := cloudprovider.GetLoadBalancerName(service)
+
+	_ = service.Annotations
+	loadBalancerIP := service.Spec.LoadBalancerIP
+
+	ports := service.Spec.Ports
+	for _, port := range ports {
+
+		endps := []agent.Endpoint{}
+		for _, node := range nodes {
+			addr, err := k.nodeAddressForLB(node)
+			if err != nil {
+				continue
+			}
+
+			ep := agent.Endpoint{
+				Name: node.Name,
+				IP:   addr,
+				Port: int(port.NodePort),
+			}
+			endps = append(endps, ep)
+		}
+
+		var act agent.RequestType
+		if update {
+			act = agent.UPDATE
+		} else {
+			act = agent.ADD
+		}
+
+		req := &agent.Request{
+			Action:     act,
+			LbName:     loadBalancerName,
+			TargetPort: int(port.Port),
+			Endpoints:  endps,
+		}
+
+		err := k.config.SendReq(loadBalancerIP, req)
+		if err != nil {
+			log.Println(err)
+		}
+	}
 	return nil
 }

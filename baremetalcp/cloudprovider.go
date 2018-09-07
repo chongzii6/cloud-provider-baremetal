@@ -3,7 +3,6 @@ package baremetalcp
 import (
 	"fmt"
 	"io"
-	"os"
 
 	"github.com/golang/glog"
 	gcfg "gopkg.in/gcfg.v1"
@@ -14,12 +13,12 @@ import (
 )
 
 const (
-	ProviderName = "htnm"
+	providerName = "htnm"
 )
 
 func readConfig(config io.Reader) (HTConfig, error) {
 	if config == nil {
-		err := fmt.Errorf("cloud provider config file is missing. Please start with --cloud-provider=%s --cloud-config=[path_to_config_file]", ProviderName)
+		err := fmt.Errorf("cloud provider config file is missing. Please start with --cloud-provider=%s --cloud-config=[path_to_config_file]", providerName)
 		return HTConfig{}, err
 	}
 
@@ -30,7 +29,7 @@ func readConfig(config io.Reader) (HTConfig, error) {
 
 func init() {
 	// cloudprovider.RegisterCloudProvider(ProviderName, newBmCloudProvider)
-	cloudprovider.RegisterCloudProvider(ProviderName, func(config io.Reader) (cloudprovider.Interface, error) {
+	cloudprovider.RegisterCloudProvider(providerName, func(config io.Reader) (cloudprovider.Interface, error) {
 		cfg, err := readConfig(config)
 		if err != nil {
 			glog.Errorf("Photon Cloud Provider: failed to read in cloud provider config file. Error[%v]", err)
@@ -41,6 +40,7 @@ func init() {
 	})
 }
 
+//BmCloudProvider config
 type BmCloudProvider struct {
 	lb cloudprovider.LoadBalancer
 }
@@ -48,8 +48,8 @@ type BmCloudProvider struct {
 var _ cloudprovider.Interface = &BmCloudProvider{}
 
 func newBmCloudProvider(config HTConfig) (cloudprovider.Interface, error) {
-	ns := os.Getenv("CLOUDPROVIDER_NAMESPACE")
-	cm := os.Getenv("CLOUDPROVIDER_CONFIG_MAP")
+	// ns := os.Getenv("CLOUDPROVIDER_NAMESPACE")
+	// cm := os.Getenv("CLOUDPROVIDER_CONFIG_MAP")
 
 	cfg, err := rest.InClusterConfig()
 
@@ -63,7 +63,7 @@ func newBmCloudProvider(config HTConfig) (cloudprovider.Interface, error) {
 		return nil, fmt.Errorf("error creating kubernetes client: %s", err.Error())
 	}
 
-	return &BmCloudProvider{NewBMLoadBalancer(clients, ns, cm)}, nil
+	return &BmCloudProvider{NewBMLoadBalancer(clients, config)}, nil
 }
 
 // Initialize provides the cloud with a kubernetes client builder and may spawn goroutines
@@ -100,7 +100,7 @@ func (k *BmCloudProvider) Routes() (cloudprovider.Routes, bool) {
 
 // ProviderName returns the cloud provider ID.
 func (k *BmCloudProvider) ProviderName() string {
-	return ProviderName
+	return providerName
 }
 
 // ScrubDNS provides an opportunity for cloud-provider-specific code to process DNS settings for pods.
