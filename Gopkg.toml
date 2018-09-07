@@ -49,8 +49,8 @@
   go-tests = true
   unused-packages = true
 
-[[constraint]]
-  name = "github.com/docker/docker"
+#[[constraint]]
+#  name = "github.com/docker/docker"
 
 [[constraint]]
   name = "go.etcd.io/etcd"
