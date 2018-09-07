@@ -1,10 +1,8 @@
 package main
 
 import (
-	"fmt"
 	"os"
 
-	"github.com/chongzii6/cloud-provider-baremetal/baremetalcp"
 	"github.com/spf13/pflag"
 )
 
@@ -19,7 +17,7 @@ func addVersionFlag() {
 
 func printAndExitIfRequested() {
 	if versionFlag {
-		fmt.Printf("%s %s\n", baremetalcp.ProviderName, version)
+		// fmt.Printf("%s %s\n", baremetalcp.ProviderName, version)
 		os.Exit(0)
 	}
 }
