@@ -84,8 +84,8 @@ func (k *BmLoadBalancer) EnsureLoadBalancer(ctx context.Context, clusterName str
 		return nil, fmt.Errorf("there are no available nodes for LoadBalancer service %s/%s", service.Namespace, service.Name)
 	}
 
-	loadBalancerIP := service.Spec.LoadBalancerIP
-	err := k.addLBReq(service, nodes, false)
+	// loadBalancerIP := service.Spec.LoadBalancerIP
+	loadBalancerIP, err := k.addLBReq(service, nodes, false)
 
 	if err == nil {
 		status := &v1.LoadBalancerStatus{}
@@ -107,7 +107,7 @@ func (k *BmLoadBalancer) UpdateLoadBalancer(ctx context.Context, clusterName str
 	if len(nodes) == 0 {
 		return fmt.Errorf("there are no available nodes for LoadBalancer service %s/%s", service.Namespace, service.Name)
 	}
-	err := k.addLBReq(service, nodes, true)
+	_, err := k.addLBReq(service, nodes, true)
 	return err
 }
 
@@ -122,18 +122,23 @@ func (k *BmLoadBalancer) UpdateLoadBalancer(ctx context.Context, clusterName str
 func (k *BmLoadBalancer) EnsureLoadBalancerDeleted(ctx context.Context, clusterName string, service *v1.Service) error {
 	// EnsureLoadBalancerDeleted(clusterName string, service *v1.Service) error
 	// return k.deleteLoadBalancer(service)
-	glog.Infof("EnsureLoadBalancerDeleted: %s/%s", clusterName, service.GetName())
+	svcName := service.GetName()
+	glog.Infof("EnsureLoadBalancerDeleted: %s/%s", clusterName, svcName)
 	loadBalancerName := cloudprovider.GetLoadBalancerName(service)
 	loadBalancerIP := service.Spec.LoadBalancerIP
+	lbChannel := k.config.GetLBChannel(loadBalancerIP)
 	req := &agent.Request{
-		Action: agent.DELETE,
-		LbName: loadBalancerName,
+		Action:  agent.DELETE,
+		LbName:  loadBalancerName,
+		SvcName: svcName,
 	}
 
-	err := k.config.SendReq(loadBalancerIP, req)
+	err := k.config.SendReq(lbChannel, req)
 	if err != nil {
 		log.Println(err)
+		return err
 	}
+	_, err = k.config.WaitforResp(lbChannel, loadBalancerName)
 	return err
 }
 
@@ -156,12 +161,14 @@ func (k *BmLoadBalancer) nodeAddressForLB(node *v1.Node) (string, error) {
 	return addrs[0].Address, nil
 }
 
-func (k *BmLoadBalancer) addLBReq(service *v1.Service, nodes []*v1.Node, update bool) error {
+func (k *BmLoadBalancer) addLBReq(service *v1.Service, nodes []*v1.Node, update bool) (string, error) {
 
+	svcName := service.Name
 	loadBalancerName := cloudprovider.GetLoadBalancerName(service)
 
 	_ = service.Annotations
 	loadBalancerIP := service.Spec.LoadBalancerIP
+	lbChannel := k.config.GetLBChannel(loadBalancerIP)
 
 	ports := service.Spec.Ports
 	for _, port := range ports {
@@ -193,12 +200,17 @@ func (k *BmLoadBalancer) addLBReq(service *v1.Service, nodes []*v1.Node, update 
 			LbName:     loadBalancerName,
 			TargetPort: int(port.Port),
 			Endpoints:  endps,
+			SvcName:    svcName,
 		}
 
-		err := k.config.SendReq(loadBalancerIP, req)
+		err := k.config.SendReq(lbChannel, req)
 		if err != nil {
 			log.Println(err)
+			return "", err
 		}
+
+		ip, err := k.config.WaitforResp(lbChannel, loadBalancerName)
+		return ip, err
 	}
-	return nil
+	return "", fmt.Errorf("ErrNoServicePort")
 }

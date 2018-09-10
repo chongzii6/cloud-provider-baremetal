@@ -9,6 +9,7 @@ import (
 
 	"github.com/chongzii6/haproxy-kube-agent/agent"
 	"github.com/coreos/etcd/clientv3"
+	"github.com/coreos/etcd/mvcc/mvccpb"
 	"github.com/coreos/etcd/pkg/transport"
 	uuid "github.com/satori/go.uuid"
 )
@@ -22,11 +23,13 @@ type HTConfig struct {
 		Agentkey  string   `gcfg:"agentkey"`
 		Reqkey    string   `gcfg:"reqkey"`
 		Endpoints []string `gcfg:"endpoints"`
+		DefaultLB string   `gcfg:"defaultlb"`
 	}
 }
 
 const (
-	dialTimeout = 5 * time.Second
+	dialTimeout     = 5 * time.Second
+	lbCreateTimeout = 30 * time.Second
 )
 
 func (c *HTConfig) newClientCfg() (*clientv3.Config, error) {
@@ -108,6 +111,33 @@ func (c *HTConfig) EtcdPut(key string, val string) error {
 	return nil
 }
 
+//EtcdWatch watch key
+func (c *HTConfig) EtcdWatch(key string, timeout time.Duration) (string, error) {
+	client, err := c.newClient()
+	if err != nil {
+		return "", err
+	}
+	defer client.Close()
+
+	wc := client.Watch(context.Background(), key, clientv3.WithPrefix())
+
+	log.Printf("watching: %s\n", key)
+	for {
+		select {
+		case <-time.After(timeout):
+			return "", fmt.Errorf("watch timeout")
+		case resp := <-wc:
+			for _, e := range resp.Events {
+				log.Printf("%s key:%s, value:%s\n", e.Type, e.Kv.Key, e.Kv.Value)
+				if e.Type == mvccpb.PUT {
+					// err = HandleReq(e.Kv.Key, e.Kv.Value)
+				}
+				return string(e.Kv.Value), nil
+			}
+		}
+	}
+}
+
 //GetLoadBalancer retrieve from etcd
 func (c *HTConfig) GetLoadBalancer(name string) (string, error) {
 	lbkey := fmt.Sprintf("%s/%s", c.Global.Agentkey, name)
@@ -135,6 +165,26 @@ func (c *HTConfig) SendReq(loadBalancerIP string, req *agent.Request) error {
 	}
 
 	return err
+}
+
+//WaitforResp wait for response of request
+func (c *HTConfig) WaitforResp(lbChannel string, lbName string) (string, error) {
+	key := fmt.Sprintf("%s/%s/%s", c.Global.Agentkey, lbChannel, lbName)
+	ip, err := c.EtcdWatch(key, lbCreateTimeout)
+	return ip, err
+}
+
+//GetLBChannel get channel name by loadbalancerIP
+func (c *HTConfig) GetLBChannel(LbIP string) string {
+	if LbIP == "" {
+		if c.Global.DefaultLB == "" {
+			return "any"
+		} else {
+			return c.Global.DefaultLB
+		}
+	} else {
+		return LbIP
+	}
 }
 
 // type config struct {

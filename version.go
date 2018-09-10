@@ -7,7 +7,7 @@ import (
 )
 
 var (
-	version     string = "unknwon"
+	version     = "unknwon"
 	versionFlag bool
 )
 
