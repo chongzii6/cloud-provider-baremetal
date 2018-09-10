@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/chongzii6/haproxy-kube-agent/agent"
 
@@ -24,6 +25,9 @@ type BmLoadBalancer struct {
 }
 
 var _ cloudprovider.LoadBalancer = &BmLoadBalancer{}
+
+//ErrTimeout = timeout
+var ErrTimeout = fmt.Errorf("ErrTimeout")
 
 //NewBMLoadBalancer new BmLoadBalancer struct
 func NewBMLoadBalancer(kubeClient *kubernetes.Clientset, config HTConfig) cloudprovider.LoadBalancer {
@@ -133,12 +137,22 @@ func (k *BmLoadBalancer) EnsureLoadBalancerDeleted(ctx context.Context, clusterN
 		SvcName: svcName,
 	}
 
+	done := make(chan error)
+	go func() {
+		_, err := k.config.WaitforResp(lbChannel, loadBalancerName)
+		done <- err
+	}()
+
+	<-time.After(time.Second)
 	err := k.config.SendReq(lbChannel, req)
 	if err != nil {
 		log.Println(err)
 		return err
 	}
-	_, err = k.config.WaitforResp(lbChannel, loadBalancerName)
+	err = <-done
+	if err == ErrTimeout {
+		err = nil
+	}
 	return err
 }
 
@@ -203,13 +217,22 @@ func (k *BmLoadBalancer) addLBReq(service *v1.Service, nodes []*v1.Node, update 
 			SvcName:    svcName,
 		}
 
+		var ip string
+		done := make(chan error)
+		go func() {
+			var err error
+			ip, err = k.config.WaitforResp(lbChannel, loadBalancerName)
+			done <- err
+		}()
+
+		<-time.After(time.Second)
+
 		err := k.config.SendReq(lbChannel, req)
 		if err != nil {
 			log.Println(err)
 			return "", err
 		}
-
-		ip, err := k.config.WaitforResp(lbChannel, loadBalancerName)
+		err = <-done
 		return ip, err
 	}
 	return "", fmt.Errorf("ErrNoServicePort")

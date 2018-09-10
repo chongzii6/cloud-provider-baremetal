@@ -125,7 +125,7 @@ func (c *HTConfig) EtcdWatch(key string, timeout time.Duration) (string, error) 
 	for {
 		select {
 		case <-time.After(timeout):
-			return "", fmt.Errorf("watch timeout")
+			return "", ErrTimeout
 		case resp := <-wc:
 			for _, e := range resp.Events {
 				log.Printf("%s key:%s, value:%s\n", e.Type, e.Kv.Key, e.Kv.Value)
