@@ -6,6 +6,8 @@ git config --global user.email "chenjun@molitv.cn"
 git config --global user.name "chongzii6"
 
 git pull
+rm -rf vendor
+tar xf v2.tar.gz
 
 echo -- go build
 go build

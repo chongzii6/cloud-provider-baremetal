@@ -5,7 +5,7 @@ RUN go get -u github.com/derekparker/delve/cmd/dlv \
   && mkdir -p /go/src/github.com/chongzii6/cloud-provider-baremetal \
   && chmod a+x /go/bin/entry.sh
 
-COPY . /go/src/github.com/chongzii6/cloud-provider-baremetal
+#COPY . /go/src/github.com/chongzii6/cloud-provider-baremetal
 #RUN cd /go/src/github.com/chongzii6/cloud-provider-baremetal \
 #  && go build
 
