@@ -139,7 +139,7 @@ func (k *BmLoadBalancer) EnsureLoadBalancerDeleted(ctx context.Context, clusterN
 
 	done := make(chan error)
 	go func() {
-		_, err := k.config.WaitforResp(lbChannel, loadBalancerName)
+		_, err := k.config.WaitforLbReady(loadBalancerName)
 		done <- err
 	}()
 
@@ -221,7 +221,7 @@ func (k *BmLoadBalancer) addLBReq(service *v1.Service, nodes []*v1.Node, update 
 		done := make(chan error)
 		go func() {
 			var err error
-			ip, err = k.config.WaitforResp(lbChannel, loadBalancerName)
+			ip, err = k.config.WaitforLbReady(loadBalancerName)
 			done <- err
 		}()
 

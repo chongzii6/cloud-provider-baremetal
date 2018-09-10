@@ -167,9 +167,9 @@ func (c *HTConfig) SendReq(loadBalancerIP string, req *agent.Request) error {
 	return err
 }
 
-//WaitforResp wait for response of request
-func (c *HTConfig) WaitforResp(lbChannel string, lbName string) (string, error) {
-	key := fmt.Sprintf("%s/%s/%s", c.Global.Agentkey, lbChannel, lbName)
+//WaitforLbReady wait for req finish
+func (c *HTConfig) WaitforLbReady(lbName string) (string, error) {
+	key := fmt.Sprintf("%s/%s", c.Global.Agentkey, lbName)
 	ip, err := c.EtcdWatch(key, lbCreateTimeout)
 	return ip, err
 }
