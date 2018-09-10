@@ -170,7 +170,16 @@ func (c *HTConfig) SendReq(loadBalancerIP string, req *agent.Request) error {
 //WaitforLbReady wait for req finish
 func (c *HTConfig) WaitforLbReady(lbName string) (string, error) {
 	key := fmt.Sprintf("%s/%s", c.Global.Agentkey, lbName)
-	ip, err := c.EtcdWatch(key, lbCreateTimeout)
+	text, err := c.EtcdWatch(key, lbCreateTimeout)
+	var ip string
+	if err == nil {
+		st := &agent.LBState{}
+		err = json.Unmarshal([]byte(text), &st)
+		if err == nil {
+			ip = st.HostIP
+		}
+		err = nil
+	}
 	return ip, err
 }
 
