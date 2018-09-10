@@ -11,9 +11,9 @@ RUN mkdir -p /go/src/github.com/chongzii6 \
 ###
 FROM golang:1.10
 
-RUN mkdir /go/bin /config
+RUN mkdir -p /go/bin/config
 COPY --from=BUILD /go/src/github.com/chongzii6/cloud-provider-baremetal/cloud-provider-baremetal /go/bin
-COPY --from=BUILD /go/src/github.com/chongzii6/cloud-provider-baremetal/config /config
+COPY --from=BUILD /go/src/github.com/chongzii6/cloud-provider-baremetal/config /go/bin/config
 WORKDIR /go/bin
 
-CMD ["cloud-provider-baremetal","--cloud-provider=htnm","--cloud-config=/config/htnm.cfg"]
+CMD ["cloud-provider-baremetal","--cloud-provider=htnm","--cloud-config=config/htnm.cfg"]
