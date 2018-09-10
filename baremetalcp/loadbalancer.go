@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"time"
 
 	"github.com/chongzii6/haproxy-kube-agent/agent"
 
@@ -139,11 +138,12 @@ func (k *BmLoadBalancer) EnsureLoadBalancerDeleted(ctx context.Context, clusterN
 
 	done := make(chan error)
 	go func() {
+		done <- nil
 		_, err := k.config.WaitforLbReady(loadBalancerName)
 		done <- err
 	}()
 
-	<-time.After(time.Second)
+	<-done
 	err := k.config.SendReq(lbChannel, req)
 	if err != nil {
 		log.Println(err)
@@ -221,11 +221,12 @@ func (k *BmLoadBalancer) addLBReq(service *v1.Service, nodes []*v1.Node, update 
 		done := make(chan error)
 		go func() {
 			var err error
+			done <- nil
 			ip, err = k.config.WaitforLbReady(loadBalancerName)
 			done <- err
 		}()
 
-		<-time.After(time.Second)
+		<-done
 
 		err := k.config.SendReq(lbChannel, req)
 		if err != nil {
