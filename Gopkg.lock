@@ -135,11 +135,11 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:6e244222611fbd3a67a6eb385a5abe09b089d4f2d37ad70831b250f16f0aac3b"
+  digest = "1:16814ded88195c61ed5a2f5f2b11e8274561cf5a35cf9e88f570ff308e09b89f"
   name = "github.com/chongzii6/haproxy-kube-agent"
   packages = ["agent"]
   pruneopts = "UT"
-  revision = "0efc8b958faa15fc01e86a913c81139c536144a6"
+  revision = "b5dae8c32936f317314e4cd97260241d6ba7e1aa"
 
 [[projects]]
   digest = "1:ed319ae4ca2e3d1884e22d307b4d02f4020316ebf95e565eaa4ead5983f48fda"
@@ -1453,6 +1453,7 @@
   input-imports = [
     "github.com/chongzii6/haproxy-kube-agent/agent",
     "github.com/coreos/etcd/clientv3",
+    "github.com/coreos/etcd/mvcc/mvccpb",
     "github.com/coreos/etcd/pkg/transport",
     "github.com/golang/glog",
     "github.com/satori/go.uuid",
