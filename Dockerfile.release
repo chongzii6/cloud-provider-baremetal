@@ -1,0 +1,19 @@
+FROM golang:1.10 as BUILD
+
+RUN mkdir -p /go/src/github.com/chongzii6 \
+  && cd /go/src/github.com/chongzii6 \
+  && git clone https://github.com/chongzii6/cloud-provider-baremetal.git \
+  && cd cloud-provider-baremetal \
+  && rm -rf vendor \
+  && tar xf v2.tar.gz \
+  && go build
+
+###
+FROM golang:1.10
+
+RUN mkdir /go/bin /config
+COPY --from=BUILD /go/src/github.com/chongzii6/cloud-provider-baremetal/cloud-provider-baremetal /go/bin
+COPY --from=BUILD /go/src/github.com/chongzii6/cloud-provider-baremetal/config /config
+WORKDIR /go/bin
+
+CMD ["cloud-provider-baremetal","--cloud-provider=htnm","--cloud-config=/config/htnm.cfg"]
