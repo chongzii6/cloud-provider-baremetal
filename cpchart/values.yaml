@@ -3,43 +3,101 @@
 # Declare variables to be passed into your templates.
 
 replicaCount: 1
+namespace: kube-system
 
 image:
-  repository: nginx
-  tag: stable
-  pullPolicy: IfNotPresent
+  repository: 192.168.100.200:5000/test/mycpm
+  tag: 0.1
+  pullPolicy: Always
 
-service:
-  type: ClusterIP
-  port: 80
+htnmCfg: |
+  [global]
+  cafile=config/ca.pem
+  certfile=config/etcd.pem
+  keyfile=config/etcd-key.pem
+  agentkey=/chongzii6/lbagent
+  reqkey=/chongzii6/lbreq
+  endpoints=https://192.168.100.210:2379
+  endpoints=https://192.168.100.211:2379
+  endpoints=https://192.168.100.212:2379
+  defaultlb=192.168.100.219
 
-ingress:
-  enabled: false
-  annotations: {}
-    # kubernetes.io/ingress.class: nginx
-    # kubernetes.io/tls-acme: "true"
-  path: /
-  hosts:
-    - chart-example.local
-  tls: []
-  #  - secretName: chart-example-tls
-  #    hosts:
-  #      - chart-example.local
+caPem: |
+  -----BEGIN CERTIFICATE-----
+  MIIDvjCCAqagAwIBAgIUYQdnVPFft6pV+/JAThHEN2OYVNcwDQYJKoZIhvcNAQEL
+  BQAwZTELMAkGA1UEBhMCQ04xEDAOBgNVBAgTB0JlaUppbmcxEDAOBgNVBAcTB0Jl
+  aUppbmcxDDAKBgNVBAoTA2s4czEPMA0GA1UECxMGU3lzdGVtMRMwEQYDVQQDEwpr
+  dWJlcm5ldGVzMB4XDTE4MDUxNjEyMjAwMFoXDTIzMDUxNTEyMjAwMFowZTELMAkG
+  A1UEBhMCQ04xEDAOBgNVBAgTB0JlaUppbmcxEDAOBgNVBAcTB0JlaUppbmcxDDAK
+  BgNVBAoTA2s4czEPMA0GA1UECxMGU3lzdGVtMRMwEQYDVQQDEwprdWJlcm5ldGVz
+  MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA0fIjutGBPfTL4aR+dsl9
+  n6oQ0iBgR1+fWb4jZRiCL7enBcW42kR4DM5uW+WrQGUJEBhSAMhJ13L3gSToO23g
+  BaHuuHnfErpUjUdrODlrFdxz1zNgW6wReeSsu5hbvj9VA8X//tRQAoI+iAsUzn0l
+  GzawUrLOD7n2R41VhlYBTxRYtDYveHcALVwjyCo4//cJmpWhdMSuIPeZ7rYmOsXL
+  Pdd7J6JdoIBqKuDJOHvP3XPCPhKbVEl3pgmea+6VLV4WQTY6P2ysljsUQ1juLU7u
+  vgjI8+u0QDDjNxAkKSEA7SDrOQv+3IBDrFuSB3rd2YibvzRW84OyQXE6xx4owk2H
+  SwIDAQABo2YwZDAOBgNVHQ8BAf8EBAMCAQYwEgYDVR0TAQH/BAgwBgEB/wIBAjAd
+  BgNVHQ4EFgQUXtomko75EjxLI6LvAn2voq8tO1IwHwYDVR0jBBgwFoAUXtomko75
+  EjxLI6LvAn2voq8tO1IwDQYJKoZIhvcNAQELBQADggEBAE2HTx3eDaW2/aTzkb4/
+  rJeFe/Kki1lAYPHlGtYl72cDia8Ls5MDXEUqjz6Fy8cH54new4mFK7ZbPLXebGLX
+  NJvlxDT5SA5+yE/DlMBwUJy6H7BZ2jS1IlBT43KulGHlyEo8wYfSAr9HeP7YpQNF
+  xdVy7JrUwmCiTdsvJhyAx3/uUBLsOwbDe/vduYa99KBAAHarC/5ftVxnmbVJ4qxf
+  r952PUao1D9iJ9qcSC+nVBIydi/CZCW5HN+S+buCnrzUzH82rmbO5qSHI9ZonuQj
+  i+NUfJIZoxjU8hs791fiNqfrFXfwp9ofyB4VND//3VfPVJ2f+n5l5VL0iv4IW8yo
+  lEE=
+  -----END CERTIFICATE-----
 
-resources: {}
-  # We usually recommend not to specify default resources and to leave this as a conscious
-  # choice for the user. This also increases chances charts run on environments with little
-  # resources, such as Minikube. If you do want to specify resources, uncomment the following
-  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
-  # limits:
-  #  cpu: 100m
-  #  memory: 128Mi
-  # requests:
-  #  cpu: 100m
-  #  memory: 128Mi
+etcdKeyPem: |
+  -----BEGIN RSA PRIVATE KEY-----
+  MIIEpAIBAAKCAQEApifgBB6AqQ3RfDwuxaOysSDNX/rtJH4vUc2e1WxOW1wAfcE/
+  M2UpnU8I4dI7/dYyty0aoChKgqqtZlH6FZ04pkUOeACx5jgSttNXAY84Sw6ROB+m
+  jGR+3GxfJP3w/tTqXfDB4ZrapInlBzmD2RJyZVIreafJLSj49z4NSFBj5pwVtyr2
+  Aaa4xcqonidRDk6U5BfI6FTBJcPBQN7KI9xKRdiDd3ARJZyX6pDKo/L3Q5I5KzcQ
+  6hnG8B1OErIV2dsFcjLCUXRMKP0g0IrYeQ5kTJb7bsIeMQ2D5JtBrIwWQs8CVDxM
+  QFCE1VAUF+M0sIlwV9WjC1sOpMpfkMugBxVPhwIDAQABAoIBAQCd0dg08WgRqx9k
+  WqGudltfZSHN3cBr3jNCBwWsAFC49D0/NVO7lIYfdhegrxjudQr89CmLIFoNnOJR
+  AuKArzJEs+kXUMmpO2+DGmBVCd1VZYPIBEAkr7vT0FfbAh1rX38xNWJi0LyGdrgE
+  0buLbrsbxB2pUxaB/53i8ZyaKEmLmwPYPOeu8w3Uj7i/yIW5NUAehq0YhyOQ9mgJ
+  Khgks46vnaZlcXIXeiyYytktobFlVinM4atNXIr561pUwusvXA8q7Y4gmUCUxoUn
+  dsQf0Ct99UUgX4sEjBkhKMMxS2vKf0hbAWKSC8PZX13kkcMfCwWxEEE+ouFv/sYJ
+  va4tchNpAoGBANdUyXXE89rbBtVYohuZqAyBGKBu7T1xyU6XLjeP29tnSuwh4dFb
+  PSgpeUIWRQFeCiOhUCuet185hPL4h9K2eVQtA7Dbe+SloVwuo/dCxIS1uiWsxlg+
+  g18++KSTUQlQV1EF/27Sxta7lDf1hy6k0UXZdKzqZyzIQo+9BeomMLa7AoGBAMWJ
+  d50/VPAaq1vQMGxQSaqsdZzJpZSF1xFkKshur5qmhdW7p1RHhhb7THQRKD3xkyiY
+  jH1PM5IGaNSigqpFTxGeSncu6rV8fogPKuou5ay/9s8t32IHhF/nN8syDSE/McfK
+  qscdnz0Ch7ZMoRtfxCvoc/4udSit8npfA9jH6IulAoGATY3oEVaiTYzdZTHLEQ3C
+  jN5iNEY/hAXbb0bcCn7xvI/zWCDL6E9oM3LcjYTfzaJFHJgY+9zqRo286JXCtY2r
+  HTopPiWO9ccB2uWhgIi3puSc6rzToyzAvCk9/Ghio2wgRrpWSV/45ZYhyBXSXmZW
+  SUYM08qI5oQqFQMLgk3G9ckCgYB/cL2rxFUfBoWxGTJ0XqP4KYVDXtClbmefP7le
+  UBKYuoAzsPo2JGK85umfJAaLWBQxp6FTospJljsBm8qi4U4utqmiFLG13pifXPG5
+  3gGtHrezWAv66ZCccsaLIEJaRbPvCrB8/35hVQWLNgrmZzVfgnt67CwHz5lVG4GW
+  1PoRRQKBgQCsjchlHMHuy6V9xi38SadWqXDjslG+UrPevapAL9TJj3Eiya8/hCki
+  WN+KHkxmuL6alaKk6IHlzsA40tx08us4xYTz4zmN+kXkc4dM/bHkABFHAHAFCOAt
+  agWNcIgy1WiQcOVHp2irunAxjnq/HkU0YrP5DfvwQzIGSBaAE2hNQQ==
+  -----END RSA PRIVATE KEY-----
 
-nodeSelector: {}
-
-tolerations: []
-
-affinity: {}
+etcdPem: |
+  -----BEGIN CERTIFICATE-----
+  MIID9jCCAt6gAwIBAgIUTxFcePCO4KDeF2XAi7br6FxCGQ8wDQYJKoZIhvcNAQEL
+  BQAwZTELMAkGA1UEBhMCQ04xEDAOBgNVBAgTB0JlaUppbmcxEDAOBgNVBAcTB0Jl
+  aUppbmcxDDAKBgNVBAoTA2s4czEPMA0GA1UECxMGU3lzdGVtMRMwEQYDVQQDEwpr
+  dWJlcm5ldGVzMB4XDTE4MDUxNjEyMjAwMFoXDTE5MDUxNjEyMjAwMFowXzELMAkG
+  A1UEBhMCQ04xEDAOBgNVBAgTB0JlaUppbmcxEDAOBgNVBAcTB0JlaUppbmcxDDAK
+  BgNVBAoTA2s4czEPMA0GA1UECxMGU3lzdGVtMQ0wCwYDVQQDEwRldGNkMIIBIjAN
+  BgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEApifgBB6AqQ3RfDwuxaOysSDNX/rt
+  JH4vUc2e1WxOW1wAfcE/M2UpnU8I4dI7/dYyty0aoChKgqqtZlH6FZ04pkUOeACx
+  5jgSttNXAY84Sw6ROB+mjGR+3GxfJP3w/tTqXfDB4ZrapInlBzmD2RJyZVIreafJ
+  LSj49z4NSFBj5pwVtyr2Aaa4xcqonidRDk6U5BfI6FTBJcPBQN7KI9xKRdiDd3AR
+  JZyX6pDKo/L3Q5I5KzcQ6hnG8B1OErIV2dsFcjLCUXRMKP0g0IrYeQ5kTJb7bsIe
+  MQ2D5JtBrIwWQs8CVDxMQFCE1VAUF+M0sIlwV9WjC1sOpMpfkMugBxVPhwIDAQAB
+  o4GjMIGgMA4GA1UdDwEB/wQEAwIFoDAdBgNVHSUEFjAUBggrBgEFBQcDAQYIKwYB
+  BQUHAwIwDAYDVR0TAQH/BAIwADAdBgNVHQ4EFgQUKh8AbnrIO1fwWYofxPmRjNCI
+  w+cwHwYDVR0jBBgwFoAUXtomko75EjxLI6LvAn2voq8tO1IwIQYDVR0RBBowGIcE
+  fwAAAYcEwKhk04cEwKhk1IcEwKhk0jANBgkqhkiG9w0BAQsFAAOCAQEABH8szisu
+  t7V+Mwv1iLvmD0qmYzLV9wou7AeoyDYs7QO8lGCfLhbJpCk9z6RiML6RyA0mpmxP
+  NsZyjcdnOotl6CHnS2njBAqIfGbJ6l6ecA50iUa5babPw8S9xQovd7BCta/aoNDR
+  eURQAIZimweU/0jyQvJpHJ2NbCEiuFxX82g1tGq47fr2cXU2//M64bKyr4a96aMt
+  fHyleAe/5pUgJEdhWFDRe40MT6KyhR4Z8XN4nGiRvMb7uoUHhqOb3ioOCoaWUcZh
+  kpy7jutMhk5CFJTrGSVaMufTsMEWR3/+tvdEqjYiCnqIxfUjtoYYd4AI7FXw/jp+
+  4SJIRlhrLk8OCg==
+  -----END CERTIFICATE-----

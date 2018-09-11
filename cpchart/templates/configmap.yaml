@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ template "cpchart.fullname" . }}
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: {{ template "cpchart.name" . }}
+    chart: {{ template "cpchart.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+data:
+  htnm.cfg: |
+{{ .Values.htnmCfg | indent 4}}
+
+  ca.pem: |
+{{ .Values.caPem | indent 4}}
+
+  etcd-key.pem: |
+{{ .Values.etcdKeyPem | indent 4}}
+
+  etcd.pem: |
+{{ .Values.etcdPem | indent 4}}
