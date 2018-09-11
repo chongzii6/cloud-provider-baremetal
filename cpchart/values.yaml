@@ -17,9 +17,9 @@ htnmCfg: |
   keyfile=config/etcd-key.pem
   agentkey=/hapagent/lbagent
   reqkey=/hapagent/lbreq
-  endpoints=https://m1-k8s:2379
-  endpoints=https://m2-k8s:2379
-  endpoints=https://m3-k8s:2379
+  endpoints=https://10.153.51.200:2379
+  endpoints=https://10.153.51.201:2379
+  endpoints=https://10.153.51.202:2379
   defaultlb=10.153.51.187
 
 caPem: |
